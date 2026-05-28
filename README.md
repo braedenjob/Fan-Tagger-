@@ -14,5 +14,6 @@ A mobile-first facility management app for tagging and tracking rooftop HVAC equ
 Open the app, navigate to your facility, and tap to place tags on equipment.
 
 ## Live App
-braedenjob.github.io/Fan-Tagger-/index.html
+[braedenjob.github.io/Fan-Tagger-/index.html](https://braedenjob.github.io/Fan-Tagger-/)
+
 
