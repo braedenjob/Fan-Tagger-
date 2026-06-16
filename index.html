@@ -205,6 +205,7 @@ select.fld option{background:var(--bg3);}
     <button class="ico" id="btn-mode" onclick="toggleMode()">✏️</button>
     <button class="ico" id="btn-home" onclick="flyHome()" title="Back to facility">🏠</button>
     <button class="ico" id="btn-location" onclick="toggleLocation()" title="My location">📍</button>
+    <button class="ico" id="btn-droppin" onclick="dropPinAtLocation()" title="Drop tag here">📌</button>
     <button class="ico" id="btn-nudge" onclick="openSheet('nudge')" title="Nudge all tags">⊹</button>
     <button class="ico" id="btn-grid" onclick="toggleGrid()" title="Grid mode">⊞</button>
     <button class="ico" id="btn-load" onclick="document.getElementById('sessfile').click()">📂</button>
@@ -758,6 +759,19 @@ select.fld option{background:var(--bg3);}
   </div>
 </div>
 
+<!-- NEARBY TAG dialog -->
+<div id="nearby-dialog" style="display:none;position:fixed;inset:0;z-index:1100;background:#000000aa;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#0f1822;border:1px solid var(--border);border-radius:18px;padding:24px;max-width:300px;width:100%;box-shadow:0 8px 40px #000000cc;">
+    <div style="font-size:20px;margin-bottom:8px;text-align:center;">📍</div>
+    <div style="font-size:14px;font-weight:600;color:#e0f0ff;text-align:center;margin-bottom:6px;">Tag found nearby</div>
+    <div style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:20px;line-height:1.5;" id="nearby-msg"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-cyan" style="flex:1;" id="nearby-yes-btn">EDIT IT</button>
+      <button class="btn btn-ghost" style="flex:1;" id="nearby-no-btn">NEW TAG</button>
+    </div>
+  </div>
+</div>
+
 <!-- FAB -->
 <button id="fab" onclick="navTo('tickets')">🎫 <span id="fab-count">0</span> OPEN TICKETS</button>
 
@@ -971,8 +985,78 @@ function toggleLabels(){
   b.textContent=showLabels?'ABC':'abc';
 }
 function flyHome(){
-  const s=getActiveSite();
-  if(map&&s) map.flyTo([s.homeLat||s.lat, s.homeLng||s.lng], 17);
+  const s = getActiveSite();
+  // Use saved home coords, fall back to DEFAULT_COORDS if homeLat not set
+  const lat = s?.homeLat || DEFAULT_COORDS[0];
+  const lng = s?.homeLng || DEFAULT_COORDS[1];
+  if(map) map.flyTo([lat, lng], 17);
+}
+
+function dropPinAtLocation(){
+  const btn = document.getElementById('btn-droppin');
+  btn.textContent = '⏳';
+  if(!navigator.geolocation){ alert('Location not available on this device'); btn.textContent='📌'; return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    btn.textContent = '📌';
+
+    // Check for nearby tags (~15 meters)
+    const nearby = findNearbyTag(lat, lng, 0.00015);
+
+    if(nearby){
+      // Show dialog
+      document.getElementById('nearby-msg').textContent =
+        `Want to edit "${nearby.label}"${nearby.building?' in Building '+nearby.building:''}?`;
+      const dialog = document.getElementById('nearby-dialog');
+      dialog.style.display = 'flex';
+
+      document.getElementById('nearby-yes-btn').onclick = () => {
+        dialog.style.display = 'none';
+        map.setView([lat, lng], 19);
+        selectRect(nearby.id, true);
+        openSheet('edit');
+      };
+      document.getElementById('nearby-no-btn').onclick = () => {
+        dialog.style.display = 'none';
+        createTagAtLocation(lat, lng);
+      };
+    } else {
+      createTagAtLocation(lat, lng);
+    }
+  }, err => {
+    alert('Could not get location: ' + err.message);
+    btn.textContent = '📌';
+  }, { enableHighAccuracy: true, timeout: 12000 });
+}
+
+function findNearbyTag(lat, lng, threshold){
+  // Find closest tag whose center is within threshold degrees (~15m)
+  let closest = null, closestDist = Infinity;
+  rects.forEach(r => {
+    const clat = (r.bounds[0][0] + r.bounds[1][0]) / 2;
+    const clng = (r.bounds[0][1] + r.bounds[1][1]) / 2;
+    const dist = Math.hypot(clat - lat, clng - lng);
+    if(dist < threshold && dist < closestDist){
+      closestDist = dist;
+      closest = r;
+    }
+  });
+  return closest;
+}
+
+function createTagAtLocation(lat, lng){
+  const size = 0.00010;
+  const bounds = [[lat-size/2, lng-size/2],[lat+size/2, lng+size/2]];
+  const id = uid();
+  const nr = {id, bounds, label:`Fan ${rects.length+1}`, status:'Unknown',
+    notes:'', building:'', assignedTo:'', locationType:'',
+    pm:{schedule:null, history:[], tickets:[]}, changelog:[]};
+  commitRects([...rects, nr]);
+  selectRect(id, false);
+  map.setView([lat, lng], 19);
+  openSheet('edit');
+  setTimeout(()=>document.getElementById('edit-label')?.focus(), 150);
 }
 function toggleMode(){
   mode=mode==='draw'?'pan':'draw';
@@ -1711,7 +1795,7 @@ function startLocation(){
 
   navigator.geolocation.getCurrentPosition(pos => {
     showLocationDot(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-    // Watch for movement
+    // Watch for movement — only updates the dot, never moves the map
     locationWatchId = navigator.geolocation.watchPosition(
       p => showLocationDot(p.coords.latitude, p.coords.longitude, p.coords.accuracy),
       err => console.log('Location error:', err),
@@ -1720,7 +1804,7 @@ function startLocation(){
     locationActive = true;
     btn.className = 'ico on';
     btn.textContent = '📍';
-    // Fly to location once
+    // Fly to location only once on first enable
     map.flyTo([pos.coords.latitude, pos.coords.longitude], 19);
   }, err => {
     alert('Could not get location: ' + err.message);
