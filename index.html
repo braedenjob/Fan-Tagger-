@@ -326,6 +326,8 @@ select.fld option{background:var(--bg3);}
   <!-- MAP panel -->
   <div class="panel active" id="panel-map">
     <div id="map"></div>
+    <!-- Draw overlay: captures taps directly when in draw mode, hidden in pan mode -->
+    <div id="draw-overlay" style="position:absolute;inset:0;z-index:200;display:none;cursor:crosshair;"></div>
 
     <!-- Floating search bar -->
     <div id="map-search-bar" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);
@@ -1100,8 +1102,35 @@ function initMap(){
     {maxZoom:22,maxNativeZoom:19,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:22,maxNativeZoom:19,opacity:0.5,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
-  // Drawing — Leaflet click event (works on desktop and mobile)
-  map.on('click', e=>{ if(mode==='draw') handleTap(e.latlng); });
+  // Draw overlay — bypasses Leaflet event system entirely
+  const overlay = document.getElementById('draw-overlay');
+  let _ts = null;
+
+  overlay.addEventListener('click', e=>{
+    const mapEl = document.getElementById('map');
+    const b = mapEl.getBoundingClientRect();
+    const latlng = map.containerPointToLatLng(L.point(e.clientX-b.left, e.clientY-b.top));
+    handleTap(latlng);
+  });
+
+  overlay.addEventListener('touchstart', e=>{
+    if(e.touches.length!==1){_ts=null;return;}
+    _ts={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now()};
+  },{passive:true});
+
+  overlay.addEventListener('touchend', e=>{
+    if(!_ts||e.changedTouches.length!==1){_ts=null;return;}
+    const t=e.changedTouches[0];
+    const moved=Math.abs(t.clientX-_ts.x)>15||Math.abs(t.clientY-_ts.y)>15;
+    const held=Date.now()-_ts.t>600;
+    _ts=null;
+    if(moved||held) return;
+    e.preventDefault();
+    const mapEl=document.getElementById('map');
+    const b=mapEl.getBoundingClientRect();
+    const latlng=map.containerPointToLatLng(L.point(t.clientX-b.left,t.clientY-b.top));
+    handleTap(latlng);
+  },{passive:false});
   map.on('moveend',()=>{
     const s=sites.find(s=>s.id===activeSiteId);
     if(s){const c=map.getCenter();s.lat=c.lat;s.lng=c.lng;s.zoom=map.getZoom();}
@@ -1343,6 +1372,8 @@ function toggleMode(){
   mode=mode==='draw'?'pan':'draw';
   const b=document.getElementById('btn-mode');
   if(b){b.className=mode==='pan'?'ico on':'ico';b.textContent=mode==='draw'?'✏️':'✋';}
+  const ov=document.getElementById('draw-overlay');
+  if(ov) ov.style.display=mode==='draw'?'block':'none';
   if(mode==='draw')cancelFirstCorner();
   updateHint();
 }
