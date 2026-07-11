@@ -1093,14 +1093,15 @@ function initMap(){
   const site=getActiveSite();
   map=L.map('map',{center:[site.lat,site.lng],zoom:site.zoom||17,
     zoomControl:false,attributionControl:false,fadeAnimation:false,
-    maxZoom:22,minZoom:15,doubleClickZoom:false,
+    maxZoom:22,minZoom:15,
     maxBounds:[[39.855,-88.940],[39.908,-88.878]],
     maxBoundsViscosity:1.0});
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:22,maxNativeZoom:19,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:22,maxNativeZoom:19,opacity:0.5,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
-  map.on('click',e=>{if(mode==='draw')handleTap(e.latlng);});
+  // Drawing — Leaflet click event (works on desktop and mobile)
+  map.on('click', e=>{ if(mode==='draw') handleTap(e.latlng); });
   map.on('moveend',()=>{
     const s=sites.find(s=>s.id===activeSiteId);
     if(s){const c=map.getCenter();s.lat=c.lat;s.lng=c.lng;s.zoom=map.getZoom();}
@@ -1113,8 +1114,7 @@ function handleTap(ll){
     firstCorner=ll;
     if(firstMarker)firstMarker.remove();
     firstMarker=L.circleMarker(ll,{
-      radius:7,color:'#00E5FF',fillColor:'#00E5FF',fillOpacity:1,weight:2,
-      interactive:false,bubblingMouseEvents:false
+      radius:7,color:'#00E5FF',fillColor:'#00E5FF',fillOpacity:1,weight:2
     }).addTo(map);
     updateHint();
   }else{
@@ -1148,8 +1148,8 @@ function syncLayers(){
       const layer=L.rectangle(r.bounds,{color:borderColor,weight:isSel?3:1.5,fillColor:color,fillOpacity:isSel?0.18:0.07}).addTo(map);
       if(showLabels)layer.bindTooltip(r.label,{permanent:true,direction:'center',className:'fan-tip'});
       layer.on('click',e=>{
-        if(mode==='draw'){ return; } // draw mode — let click fall through to map
         L.DomEvent.stopPropagation(e);
+        if(mode==='draw') return;
         selectRect(r.id,true);openSheet('edit');
       });
       layers[r.id]=layer;
