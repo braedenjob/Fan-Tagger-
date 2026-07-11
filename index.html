@@ -1112,7 +1112,10 @@ function handleTap(ll){
   if(!firstCorner){
     firstCorner=ll;
     if(firstMarker)firstMarker.remove();
-    firstMarker=L.circleMarker(ll,{radius:7,color:'#00E5FF',fillColor:'#00E5FF',fillOpacity:1,weight:2}).addTo(map);
+    firstMarker=L.circleMarker(ll,{
+      radius:7,color:'#00E5FF',fillColor:'#00E5FF',fillOpacity:1,weight:2,
+      interactive:false,bubblingMouseEvents:false
+    }).addTo(map);
     updateHint();
   }else{
     const fc=firstCorner;
@@ -2315,7 +2318,7 @@ function showLocationDot(lat, lng, accuracy){
   if(locationMarker){
     locationMarker.setLatLng([lat,lng]);
   } else {
-    locationMarker = L.marker([lat,lng], {icon, zIndexOffset:1000}).addTo(map);
+    locationMarker = L.marker([lat,lng], {icon, zIndexOffset:1000, interactive:false}).addTo(map);
     locationMarker.bindTooltip('You are here', {permanent:false, className:'fan-tip'});
   }
 }
