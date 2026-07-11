@@ -1034,7 +1034,7 @@ function saveRequests(){
 function fmtDate(d){return d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';}
 
 // ── State ──────────────────────────────────────────────────────────────────
-let rects=[],selected=null,mode='draw',firstCorner=null,showLabels=true,trashReady=false;
+let rects=[],selected=null,mode='pan',firstCorner=null,showLabels=true,trashReady=false;
 let hist={stack:[[]],idx:0};
 let map,layers={},firstMarker=null,listMode='list';
 let gridActive=false,gridLayers=[],selectedCells=new Set(),gridCells=[];
@@ -1093,7 +1093,7 @@ function initMap(){
   const site=getActiveSite();
   map=L.map('map',{center:[site.lat,site.lng],zoom:site.zoom||17,
     zoomControl:false,attributionControl:false,fadeAnimation:false,
-    maxZoom:22,minZoom:15,
+    maxZoom:22,minZoom:15,doubleClickZoom:false,
     maxBounds:[[39.855,-88.940],[39.908,-88.878]],
     maxBoundsViscosity:1.0});
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
