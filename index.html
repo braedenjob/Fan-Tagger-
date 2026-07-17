@@ -214,10 +214,11 @@ select.fld option{background:var(--bg3);}
 </div>
 
 <!-- Transparent toolbar dropdown -->
-<div id="toolbar-drop" style="display:none;position:fixed;top:54px;right:8px;
-  background:rgba(13,18,25,0.92);border:1px solid var(--border);border-radius:14px;
-  z-index:600;padding:10px;display:none;flex-direction:column;gap:6px;
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);min-width:52px;align-items:center;">
+<div id="toolbar-drop" style="display:none;position:fixed;top:54px;right:4px;
+  background:rgba(13,18,25,0.95);border:1px solid var(--border);border-radius:14px;
+  z-index:600;padding:8px;flex-direction:column;gap:5px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  width:52px;align-items:center;max-height:calc(100dvh - 70px);overflow-y:auto;">
   <button class="ico" id="tb-undo"   disabled onclick="undo()"           title="Undo">↩</button>
   <button class="ico" id="tb-redo"   disabled onclick="redo()"           title="Redo">↪</button>
   <button class="ico" id="tb-trash"  disabled onclick="trashSelected()"  title="Delete">🗑</button>
@@ -326,8 +327,6 @@ select.fld option{background:var(--bg3);}
   <!-- MAP panel -->
   <div class="panel active" id="panel-map">
     <div id="map"></div>
-    <!-- Draw overlay: captures taps directly when in draw mode, hidden in pan mode -->
-    <div id="draw-overlay" style="position:absolute;inset:0;z-index:200;display:none;cursor:crosshair;"></div>
 
     <!-- Floating search bar -->
     <div id="map-search-bar" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);
@@ -1102,13 +1101,15 @@ function initMap(){
     {maxZoom:22,maxNativeZoom:19,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:22,maxNativeZoom:19,opacity:0.5,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
-  // Draw overlay — bypasses Leaflet event system entirely
-  const overlay = document.getElementById('draw-overlay');
+  // Draw overlay — injected INSIDE Leaflet container so z-index is above all Leaflet panes
+  const overlay = document.createElement('div');
+  overlay.id = 'draw-overlay';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:1000;display:none;cursor:crosshair;pointer-events:none;';
+  map.getContainer().appendChild(overlay);
   let _ts = null;
 
   overlay.addEventListener('click', e=>{
-    const mapEl = document.getElementById('map');
-    const b = mapEl.getBoundingClientRect();
+    const b = map.getContainer().getBoundingClientRect();
     const latlng = map.containerPointToLatLng(L.point(e.clientX-b.left, e.clientY-b.top));
     handleTap(latlng);
   });
@@ -1126,8 +1127,7 @@ function initMap(){
     _ts=null;
     if(moved||held) return;
     e.preventDefault();
-    const mapEl=document.getElementById('map');
-    const b=mapEl.getBoundingClientRect();
+    const b=map.getContainer().getBoundingClientRect();
     const latlng=map.containerPointToLatLng(L.point(t.clientX-b.left,t.clientY-b.top));
     handleTap(latlng);
   },{passive:false});
@@ -1373,7 +1373,7 @@ function toggleMode(){
   const b=document.getElementById('btn-mode');
   if(b){b.className=mode==='pan'?'ico on':'ico';b.textContent=mode==='draw'?'✏️':'✋';}
   const ov=document.getElementById('draw-overlay');
-  if(ov) ov.style.display=mode==='draw'?'block':'none';
+  if(ov){ ov.style.pointerEvents=mode==='draw'?'all':'none'; ov.style.display=mode==='draw'?'block':'none'; }
   if(mode==='draw')cancelFirstCorner();
   updateHint();
 }
