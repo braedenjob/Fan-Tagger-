@@ -318,23 +318,25 @@ select.fld option{background:var(--bg3);}
       <button class="ptab"    id="fbtn-A" onclick="switchBuilding('A')">A BLDG</button>
       <button class="ptab"    id="fbtn-W" onclick="switchBuilding('W')">W BLDG</button>
     </div>
-    <div style="padding:5px 12px;background:var(--bg2);border-bottom:1px solid var(--border);
-      flex-shrink:0;display:flex;justify-content:space-between;align-items:center;">
-      <span id="floor-info" style="font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;"></span>
-      <div style="display:flex;gap:5px;">
-        <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;" onclick="floorZoom(-0.3)">−</button>
-        <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;" onclick="floorFit()">FIT</button>
-        <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;" onclick="floorZoom(0.3)">+</button>
+    <!-- Search bar -->
+    <div style="padding:7px 12px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;">
+      <input id="floor-search" class="fld" placeholder="🔍 Search cell, label, notes…"
+        oninput="floorSearchQuery=this.value;renderFloorPlan()"
+        style="flex:1;padding:8px 12px;border-radius:20px;">
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="floorZoom(-0.2)">−</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;" onclick="floorFit()">FIT</button>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="floorZoom(0.2)">+</button>
       </div>
     </div>
-    <canvas id="floor-canvas" style="flex:1;display:block;touch-action:none;cursor:crosshair;background:#0b0f0b;"></canvas>
+    <canvas id="floor-canvas" style="flex:1;display:block;touch-action:none;cursor:crosshair;background:#080f08;"></canvas>
     <div style="padding:5px 12px;background:var(--bg2);border-top:1px solid var(--border);
       flex-shrink:0;display:flex;gap:12px;align-items:center;font-size:10px;color:var(--text2);">
       <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#00C9A7;border-radius:1px;display:inline-block;"></span>Active</span>
       <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#FFD600;border-radius:1px;display:inline-block;"></span>Maint</span>
       <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#ff4455;border-radius:1px;display:inline-block;"></span>Ticket</span>
       <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#4a6888;border-radius:1px;display:inline-block;"></span>Unknown</span>
-      <span style="margin-left:auto;color:var(--text3);">TAP CELL TO TAG</span>
+      <span style="margin-left:auto;color:var(--text3);font-size:9px;">DRAG·PINCH·TAP</span>
     </div>
   </div>
 
@@ -1907,16 +1909,15 @@ function showLocationDot(lat, lng, accuracy){
   }
 }
 
-// ── Floor Plan ──────────────────────────────────────────────────────────────
+// ── Floor Plan (2.5D Isometric) ─────────────────────────────────────────────
 const FLOOR_BUILDINGS={
-  B:{name:'B Building',rows:'ABCDEFGHIJKLMNOPQR'.split(''),cols:70,flip:false,desc:'A1–R70 · Col 1 = center side'},
-  D:{name:'D Building',rows:'ABCDEFG'.split(''),cols:56,flip:true,desc:'A1–G56 · Mirrored from center'},
-  A:{name:'A Building',rows:'ABCDEFGHIJ'.split(''),cols:50,flip:false,desc:'A1–J50'},
-  W:{name:'W Building',rows:'ABCDE'.split(''),cols:37,flip:false,desc:'A1–E37'},
+  B:{name:'B Building',rows:'ABCDEFGHIJKLMNOPQR'.split(''),cols:70,flip:false},
+  D:{name:'D Building',rows:'ABCDEFG'.split(''),cols:56,flip:true},
+  A:{name:'A Building',rows:'ABCDEFGHIJ'.split(''),cols:50,flip:false},
+  W:{name:'W Building',rows:'ABCDE'.split(''),cols:37,flip:false},
 };
 let activeBuilding='B',floorScale=1,floorPanX=0,floorPanY=0,floorInited=false;
-let floorData={},floorEditCell=null,floorCellType='Fan';
-const CW0=18,CH0=22,HW=22,HH=18;
+let floorData={},floorEditCell=null,floorCellType='Fan',floorSearchQuery='';
 const FSTATUS={Active:'#00C9A7',Inactive:'#5a7090',Maintenance:'#FFD600',Unknown:'#4a6888'};
 
 function loadFloorData(){try{const d=localStorage.getItem('ft_floor');if(d)floorData=JSON.parse(d);}catch(e){}}
@@ -1924,74 +1925,114 @@ function saveFloorData(){try{localStorage.setItem('ft_floor',JSON.stringify(floo
 
 function switchBuilding(id){
   activeBuilding=id;
-  ['B','D','A','W'].forEach(b=>{const el=document.getElementById(`fbtn-${b}`);if(el)el.className=b===id?'ptab on':'ptab';});
+  ['B','D','A','W'].forEach(b=>{const el=document.getElementById('fbtn-'+b);if(el)el.className=b===id?'ptab on':'ptab';});
   floorFit();
 }
 function floorFit(){
   const c=document.getElementById('floor-canvas');if(!c)return;
-  const b=FLOOR_BUILDINGS[activeBuilding];
-  floorScale=Math.min((c.offsetWidth-HW-4)/(b.cols*CW0),(c.offsetHeight-HH-4)/(b.rows.length*CH0),3);
+  const bld=FLOOR_BUILDINGS[activeBuilding];
+  const W=c.offsetWidth,H=c.offsetHeight;
+  const scX=W/((bld.cols+bld.rows.length)*28);
+  const scY=(H*0.75)/((bld.cols+bld.rows.length)*14);
+  floorScale=Math.max(0.1,Math.min(scX,scY,2));
   floorPanX=0;floorPanY=0;renderFloorPlan();
 }
-function floorZoom(d){floorScale=Math.max(0.3,Math.min(6,floorScale+d));renderFloorPlan();}
+function floorZoom(d){floorScale=Math.max(0.1,Math.min(5,floorScale+d));renderFloorPlan();}
+
+function isoFace(ctx,pts,color,stroke){
+  ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);
+  ctx.closePath();ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle=stroke||'#050a05';ctx.lineWidth=0.5;ctx.stroke();
+}
+function isoTile(ctx,x,y,tw,th,col,stroke){
+  isoFace(ctx,[[x,y],[x+tw/2,y+th/2],[x,y+th],[x-tw/2,y+th/2]],col,stroke);
+}
+function isoBox(ctx,x,y,tw,th,bh,top,left,right,sc2){
+  isoFace(ctx,[[x-tw/2,y-bh+th/2],[x,y-bh+th],[x,y+th],[x-tw/2,y+th/2]],left,sc2||'#050a05');
+  isoFace(ctx,[[x+tw/2,y-bh+th/2],[x,y-bh+th],[x,y+th],[x+tw/2,y+th/2]],right,sc2||'#050a05');
+  isoTile(ctx,x,y-bh,tw,th,top,sc2||'#050a05');
+}
 
 function renderFloorPlan(){
   const canvas=document.getElementById('floor-canvas');if(!canvas)return;
   const ctx=canvas.getContext('2d');
-  const W=canvas.offsetWidth,H=canvas.offsetHeight;
+  const W=canvas.offsetWidth||300,H=canvas.offsetHeight||400;
   canvas.width=W;canvas.height=H;
   const bld=FLOOR_BUILDINGS[activeBuilding];
-  const cw=CW0*floorScale,ch=CH0*floorScale,hw=HW*floorScale,hh=HH*floorScale;
+  const ROWS=bld.rows.length,COLS=bld.cols;
+  const TW=28*floorScale,TH=14*floorScale,WH=TH*3,EH=TH*2.5;
+  const gw=(COLS+ROWS)*TW/2;
+  const ox=W/2-gw/2+ROWS*TW/2+floorPanX;
+  const oy=TH*2.5+floorPanY;
+  function sc(ci,ri){return{x:ox+(ci-ri)*TW/2,y:oy+(ci+ri)*TH/2};}
   const data=floorData[activeBuilding]||{};
-  ctx.fillStyle='#0b0f0b';ctx.fillRect(0,0,W,H);
-  ctx.save();ctx.translate(floorPanX,floorPanY);
-  bld.rows.forEach((row,ri)=>{
-    for(let ci=0;ci<bld.cols;ci++){
-      const colNum=bld.flip?bld.cols-ci:ci+1;
-      const cell=data[`${row}-${colNum}`];
-      const x=hw+ci*cw,y=hh+ri*ch;
-      if(cell){ctx.fillStyle=FSTATUS[cell.status]||'#4a6888';ctx.globalAlpha=0.55;ctx.fillRect(x+.5,y+.5,cw-1,ch-1);ctx.globalAlpha=1;}
-      else{ctx.fillStyle=(ri+ci)%2===0?'#0f170f':'#111a11';ctx.fillRect(x+.5,y+.5,cw-1,ch-1);}
-      ctx.strokeStyle='#1a2e1a';ctx.lineWidth=0.5;ctx.strokeRect(x+.5,y+.5,cw-1,ch-1);
-      if(cell&&cell.label&&floorScale>2.5){
-        ctx.fillStyle='#e0f0ff';ctx.font=`bold ${Math.max(6,7*floorScale)}px IBM Plex Mono,monospace`;
-        ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(cell.label.slice(0,8),x+cw/2,y+ch/2);
+  const q=(floorSearchQuery||'').toLowerCase().trim();
+  ctx.fillStyle='#080f08';ctx.fillRect(0,0,W,H);
+  for(let sum=0;sum<=ROWS+COLS-2;sum++){
+    for(let ri=Math.max(0,sum-(COLS-1));ri<=Math.min(ROWS-1,sum);ri++){
+      const ci=sum-ri;if(ci<0||ci>=COLS)continue;
+      const row=bld.rows[ri];
+      const colNum=bld.flip?COLS-ci:ci+1;
+      const cellId=row+'-'+colNum;
+      const cell=data[cellId];
+      const {x,y}=sc(ci,ri);
+      const isEdge=ri===0||ri===ROWS-1||ci===0||ci===COLS-1;
+      const isMatch=q&&(cellId.toLowerCase().includes(q)||(cell?.label||'').toLowerCase().includes(q)||(cell?.notes||'').toLowerCase().includes(q));
+      if(isEdge){
+        isoBox(ctx,x,y,TW,TH,WH,
+          isMatch?'#00E5FF55':'#2a3e2a',
+          isMatch?'#00E5FF33':'#1e2e1e',
+          isMatch?'#00E5FF22':'#192619',
+          isMatch?'#00E5FF':'#050a05');
+      }else{
+        isoTile(ctx,x,y,TW,TH,(ri+ci)%2===0?'#131a13':'#101610',isMatch?'#00E5FF44':'#0a0f0a');
+        if(cell){
+          const color=FSTATUS[cell.status]||'#4a6888';
+          const ew=TW*0.72,eh=TH*0.72;
+          isoFace(ctx,[[x-ew/2,y-EH+eh/2],[x,y-EH+eh],[x,y+eh],[x-ew/2,y+eh/2]],color+'77');
+          isoFace(ctx,[[x+ew/2,y-EH+eh/2],[x,y-EH+eh],[x,y+eh],[x+ew/2,y+eh/2]],color+'44');
+          isoTile(ctx,x,y-EH,ew,eh,isMatch?'#ffffff':color,isMatch?'#00E5FF':'#050a05');
+          if(cell.label&&floorScale>0.45){
+            ctx.save();ctx.fillStyle='#e0f0ff';ctx.shadowColor='#000';ctx.shadowBlur=3;
+            ctx.font='bold '+Math.max(7,Math.round(9*floorScale))+'px IBM Plex Mono,monospace';
+            ctx.textAlign='center';ctx.textBaseline='bottom';
+            ctx.fillText(cell.label.slice(0,10),x,y-EH-2);ctx.restore();
+          }
+        }
+      }
+      if(floorScale>0.3){
+        ctx.fillStyle='#3a5a3a';ctx.shadowBlur=0;
+        ctx.font=Math.max(8,Math.round(9*floorScale))+'px IBM Plex Mono,monospace';
+        if(ci===0){ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(row,x-TW/2-3,y+TH/2);}
+        if(ri===0&&(colNum===1||colNum%10===0)){ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(colNum,x,y-2);}
       }
     }
-  });
-  ctx.fillStyle='#4a7090';ctx.textBaseline='middle';
-  ctx.font=`${Math.max(8,9*floorScale)}px IBM Plex Mono,monospace`;ctx.textAlign='center';
-  bld.rows.forEach((row,ri)=>ctx.fillText(row,hw/2,hh+ri*ch+ch/2));
-  ctx.font=`${Math.max(7,8*floorScale)}px IBM Plex Mono,monospace`;
-  for(let ci=0;ci<bld.cols;ci++){
-    const colNum=bld.flip?bld.cols-ci:ci+1;
-    if(colNum===1||colNum%10===0||colNum===bld.cols){ctx.textAlign='center';ctx.fillText(colNum,hw+ci*cw+cw/2,hh/2);}
   }
-  ctx.strokeStyle='#2a4a2a';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(hw,0);ctx.lineTo(hw,hh+bld.rows.length*ch);ctx.moveTo(0,hh);ctx.lineTo(hw+bld.cols*cw,hh);ctx.stroke();
-  ctx.restore();
-  const info=document.getElementById('floor-info');
-  if(info)info.textContent=`${FLOOR_BUILDINGS[activeBuilding].name} · ${FLOOR_BUILDINGS[activeBuilding].desc} · ${Math.round(floorScale*100)}%`;
 }
 
 function floorTap(clientX,clientY){
   const canvas=document.getElementById('floor-canvas');if(!canvas)return;
-  const r=canvas.getBoundingClientRect();
-  const x=clientX-r.left-floorPanX,y=clientY-r.top-floorPanY;
   const bld=FLOOR_BUILDINGS[activeBuilding];
-  const cw=CW0*floorScale,ch=CH0*floorScale,hw=HW*floorScale,hh=HH*floorScale;
-  if(x<hw||y<hh)return;
-  const ci=Math.floor((x-hw)/cw),ri=Math.floor((y-hh)/ch);
-  if(ci<0||ci>=bld.cols||ri<0||ri>=bld.rows.length)return;
-  const row=bld.rows[ri],colNum=bld.flip?bld.cols-ci:ci+1;
-  openFloorCell(`${row}-${colNum}`,row,colNum);
+  const ROWS=bld.rows.length,COLS=bld.cols;
+  const TW=28*floorScale,TH=14*floorScale;
+  const gw=(COLS+ROWS)*TW/2;
+  const br=canvas.getBoundingClientRect();
+  const originX=canvas.offsetWidth/2-gw/2+ROWS*TW/2+floorPanX;
+  const originY=TH*2.5+floorPanY;
+  const px=clientX-br.left-originX,py=clientY-br.top-originY;
+  const ci=Math.round((px/(TW/2)+py/(TH/2))/2);
+  const ri=Math.round((py/(TH/2)-px/(TW/2))/2);
+  if(ci<0||ci>=COLS||ri<0||ri>=ROWS)return;
+  const row=bld.rows[ri];
+  const colNum=bld.flip?COLS-ci:ci+1;
+  openFloorCell(row+'-'+colNum,row,colNum);
 }
 
 function openFloorCell(cellId,row,col){
   floorEditCell=cellId;
   const cell=(floorData[activeBuilding]||{})[cellId]||{};
-  document.getElementById('fcell-title').textContent=`${FLOOR_BUILDINGS[activeBuilding].name} · ${row}${col}`;
+  document.getElementById('fcell-title').textContent=FLOOR_BUILDINGS[activeBuilding].name+' · '+row+col;
   document.getElementById('fcell-label').value=cell.label||'';
   document.getElementById('fcell-status').value=cell.status||'Unknown';
   document.getElementById('fcell-notes').value=cell.notes||'';
@@ -2015,11 +2056,11 @@ function initFloorPlan(){
   canvas.addEventListener('mousedown',e=>{isPan=false;lx=e.clientX;ly=e.clientY;});
   canvas.addEventListener('mousemove',e=>{if(e.buttons!==1)return;isPan=true;floorPanX+=e.clientX-lx;floorPanY+=e.clientY-ly;lx=e.clientX;ly=e.clientY;renderFloorPlan();});
   canvas.addEventListener('mouseup',e=>{if(!isPan)floorTap(e.clientX,e.clientY);isPan=false;});
-  canvas.addEventListener('wheel',e=>{e.preventDefault();floorZoom(e.deltaY<0?0.2:-0.2);},{passive:false});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();floorZoom(e.deltaY<0?0.15:-0.15);},{passive:false});
   canvas.addEventListener('touchstart',e=>{e.preventDefault();lastTs=[...e.touches];if(e.touches.length===2){pd0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);ps0=floorScale;}},{passive:false});
   canvas.addEventListener('touchmove',e=>{e.preventDefault();
     if(e.touches.length===1&&lastTs.length===1){floorPanX+=e.touches[0].clientX-lastTs[0].clientX;floorPanY+=e.touches[0].clientY-lastTs[0].clientY;}
-    else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);floorScale=Math.max(0.3,Math.min(6,ps0*(d/pd0)));}
+    else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);floorScale=Math.max(0.1,Math.min(5,ps0*(d/pd0)));}
     lastTs=[...e.touches];renderFloorPlan();},{passive:false});
   canvas.addEventListener('touchend',e=>{
     if(e.touches.length===0&&lastTs.length===1){const t=e.changedTouches[0];if(Math.abs(t.clientX-lastTs[0].clientX)<10&&Math.abs(t.clientY-lastTs[0].clientY)<10)floorTap(t.clientX,t.clientY);}
