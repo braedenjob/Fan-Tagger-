@@ -1926,16 +1926,21 @@ function saveFloorData(){try{localStorage.setItem('ft_floor',JSON.stringify(floo
 function switchBuilding(id){
   activeBuilding=id;
   ['B','D','A','W'].forEach(b=>{const el=document.getElementById('fbtn-'+b);if(el)el.className=b===id?'ptab on':'ptab';});
-  floorFit();
+  floorDefault();
 }
 function floorFit(){
+  // Fit whole building into view
   const c=document.getElementById('floor-canvas');if(!c)return;
   const bld=FLOOR_BUILDINGS[activeBuilding];
   const W=c.offsetWidth,H=c.offsetHeight;
   const scX=W/((bld.cols+bld.rows.length)*28);
   const scY=(H*0.75)/((bld.cols+bld.rows.length)*14);
-  floorScale=Math.max(0.1,Math.min(scX,scY,2));
+  floorScale=Math.max(0.1,Math.min(scX,scY));
   floorPanX=0;floorPanY=0;renderFloorPlan();
+}
+function floorDefault(){
+  // Start zoomed in so cells are big and readable
+  floorScale=1.8;floorPanX=0;floorPanY=0;renderFloorPlan();
 }
 function floorZoom(d){floorScale=Math.max(0.1,Math.min(5,floorScale+d));renderFloorPlan();}
 
@@ -1980,7 +1985,9 @@ function renderFloorPlan(){
       const cell=data[cellId];
       const {x,y}=sc(ci,ri);
       const isEdge=ri===0||ri===ROWS-1||ci===0||ci===COLS-1;
-      const isMatch=q&&(cellId.toLowerCase()===qNorm||cellId.toLowerCase().includes(q)||(cell?.label||'').toLowerCase().includes(q)||(cell?.notes||'').toLowerCase().includes(q));
+      const cellLow=cellId.toLowerCase();
+      const cellNoHyphen=cellLow.replace('-','');
+      const isMatch=q&&(cellLow===qNorm||cellNoHyphen===q||cellLow.includes(q)||(cell?.label||'').toLowerCase().includes(q)||(cell?.notes||'').toLowerCase().includes(q));
       if(isEdge){
         isoBox(ctx,x,y,TW,TH,WH,
           isMatch?'#00E5FF55':'#2a3e2a',
@@ -2067,7 +2074,7 @@ function initFloorPlan(){
   canvas.addEventListener('touchend',e=>{
     if(e.touches.length===0&&lastTs.length===1){const t=e.changedTouches[0];if(Math.abs(t.clientX-lastTs[0].clientX)<10&&Math.abs(t.clientY-lastTs[0].clientY)<10)floorTap(t.clientX,t.clientY);}
     lastTs=[...e.touches];},{passive:false});
-  floorFit();
+  floorDefault();
 }
 
 function navTo(name){
@@ -2079,7 +2086,7 @@ function navTo(name){
   if(nav)nav.classList.add('active');
   currentPanel=name;
   if(name==='map'){setTimeout(()=>map&&map.invalidateSize(true),50);}
-  else if(name==='floorplan'){initFloorPlan();setTimeout(()=>floorFit(),50);}
+  else if(name==='floorplan'){initFloorPlan();setTimeout(()=>floorDefault(),50);}
   else if(name==='tickets'){renderTicketsPanel();}
   else if(name==='schedule'){renderSchedulePanel();}
   else if(name==='history'){renderHistoryPanel();}
