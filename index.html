@@ -287,19 +287,6 @@ select.fld option{background:var(--bg3);}
     <div class="nav-item" id="nav-search" onclick="navTo('search')">
       <span class="nav-icon">🔍</span><span class="nav-label">Search Tags</span>
     </div>
-    <div class="nav-item" id="nav-crew" onclick="navTo('crew')">
-      <span class="nav-icon">👷</span><span class="nav-label">Crew</span>
-    </div>
-    <div class="nav-item" id="nav-tickets" onclick="navTo('tickets')">
-      <span class="nav-icon">🎫</span><span class="nav-label">PM Tickets</span>
-      <span class="nav-badge" id="nav-open-count" style="display:none">0</span>
-    </div>
-    <div class="nav-item" id="nav-schedule" onclick="navTo('schedule')">
-      <span class="nav-icon">📅</span><span class="nav-label">PM Schedule</span>
-    </div>
-    <div class="nav-item" id="nav-history" onclick="navTo('history')">
-      <span class="nav-icon">📋</span><span class="nav-label">PM History</span>
-    </div>
     <div class="nav-item" id="nav-sites" onclick="navTo('sites')">
       <span class="nav-icon">🏢</span><span class="nav-label">Sites</span>
     </div>
@@ -351,28 +338,10 @@ select.fld option{background:var(--bg3);}
     </div>
   </div>
 
-  <div class="panel" id="panel-tickets">
-    <div class="panel-tabs">
-      <button class="ptab on" id="ptab-open" onclick="switchTicketTab('open')">🔴 OPEN</button>
-      <button class="ptab" id="ptab-closed" onclick="switchTicketTab('closed')">✅ CLOSED</button>
-    </div>
-    <div class="panel-body" id="tickets-body" style="padding:14px;"></div>
-  </div>
 
   <!-- SCHEDULE panel -->
-  <div class="panel" id="panel-schedule">
-    <div class="panel-header"><span class="panel-title">📅 PM SCHEDULE</span>
-      <button class="btn btn-cyan" style="padding:7px 14px;font-size:11px;margin-left:auto"
-        onclick="openSheet('schedule-new')">+ NEW</button>
-    </div>
-    <div class="panel-body" id="schedule-body" style="padding:14px;"></div>
-  </div>
 
   <!-- HISTORY panel -->
-  <div class="panel" id="panel-history">
-    <div class="panel-header"><span class="panel-title">📋 PM HISTORY</span></div>
-    <div class="panel-body" id="history-body" style="padding:14px;"></div>
-  </div>
 
   <!-- SITES panel -->
   <div class="panel" id="panel-sites">
@@ -428,18 +397,6 @@ select.fld option{background:var(--bg3);}
   </div>
 
   <!-- CREW panel -->
-  <div class="panel" id="panel-crew">
-    <div class="panel-tabs">
-      <button class="ptab on" id="ctab-employees" onclick="switchCrewTab('employees')">👷 EMPLOYEES</button>
-      <button class="ptab" id="ctab-shifts" onclick="switchCrewTab('shifts')">🕐 SHIFTS</button>
-      <button class="ptab" id="ctab-assigned" onclick="switchCrewTab('assigned')">📋 ASSIGNED</button>
-    </div>
-    <div style="padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;justify-content:flex-end;">
-      <button class="btn btn-cyan" style="padding:7px 14px;font-size:11px;" id="crew-add-btn"
-        onclick="openCrewAdd()">+ ADD</button>
-    </div>
-    <div class="panel-body" id="crew-body" style="padding:14px;"></div>
-  </div>
 </div>
 <div id="dimmer" onclick="closeSheet()"></div>
 
@@ -1996,10 +1953,10 @@ function renderFloorPlan(){
       if(cell){ctx.fillStyle=FSTATUS[cell.status]||'#4a6888';ctx.globalAlpha=0.55;ctx.fillRect(x+.5,y+.5,cw-1,ch-1);ctx.globalAlpha=1;}
       else{ctx.fillStyle=(ri+ci)%2===0?'#0f170f':'#111a11';ctx.fillRect(x+.5,y+.5,cw-1,ch-1);}
       ctx.strokeStyle='#1a2e1a';ctx.lineWidth=0.5;ctx.strokeRect(x+.5,y+.5,cw-1,ch-1);
-      if(cell&&floorScale>1.4){
+      if(cell&&cell.label&&floorScale>2.5){
         ctx.fillStyle='#e0f0ff';ctx.font=`bold ${Math.max(6,7*floorScale)}px IBM Plex Mono,monospace`;
         ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText((cell.label||`${row}${colNum}`).slice(0,8),x+cw/2,y+ch/2);
+        ctx.fillText(cell.label.slice(0,8),x+cw/2,y+ch/2);
       }
     }
   });
