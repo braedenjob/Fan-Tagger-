@@ -244,9 +244,8 @@ select.fld option{background:var(--bg3);}
     <div class="nav-item" id="nav-map" onclick="navTo('map')">
       <span class="nav-icon">🗺️</span><span class="nav-label">Map View</span>
     </div>
-    <div class="nav-item" id="nav-floorview" onclick="navTo('floorview')">
-      <span class="nav-icon">🏗️</span><span class="nav-label">Floor View</span>
-      <span style="font-size:9px;color:var(--cyan);font-family:'IBM Plex Mono',monospace;margin-left:auto;">BETA</span>
+    <div class="nav-item" id="nav-floorplan" onclick="navTo('floorplan')">
+      <span class="nav-icon">🏗️</span><span class="nav-label">Floor Plan</span>
     </div>
     <div class="nav-item" id="nav-requests" onclick="navTo('requests')">
       <span class="nav-icon">📥</span><span class="nav-label">Requests</span>
@@ -299,28 +298,35 @@ select.fld option{background:var(--bg3);}
     <div class="panel-body" id="requests-body" style="padding:14px;"></div>
   </div>
 
-  <!-- FLOOR VIEW panel -->
-  <div class="panel" id="panel-floorview">
-    <div class="panel-header">
-      <span class="panel-title">🏗️ FLOOR VIEW <span style="font-size:10px;color:var(--cyan);">BETA</span></span>
-      <div style="display:flex;gap:6px;margin-left:auto;">
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="zoomIso(-1)">−</button>
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="resetIso()">⌂</button>
-        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="zoomIso(1)">+</button>
+  <!-- FLOOR PLAN panel -->
+  <div class="panel" id="panel-floorplan">
+    <!-- Building tabs -->
+    <div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg2);overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <button class="ptab on" id="fbtn-B" onclick="switchBuilding('B')">B BLDG</button>
+      <button class="ptab"    id="fbtn-D" onclick="switchBuilding('D')">D BLDG</button>
+      <button class="ptab"    id="fbtn-A" onclick="switchBuilding('A')">A BLDG</button>
+      <button class="ptab"    id="fbtn-W" onclick="switchBuilding('W')">W BLDG</button>
+    </div>
+    <!-- Info bar -->
+    <div style="padding:5px 12px;background:var(--bg2);border-bottom:1px solid var(--border);
+      flex-shrink:0;display:flex;justify-content:space-between;align-items:center;">
+      <span id="floor-info" style="font-size:10px;color:var(--text2);font-family:'IBM Plex Mono',monospace;"></span>
+      <div style="display:flex;gap:5px;">
+        <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;" onclick="floorZoom(-0.3)">−</button>
+        <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;" onclick="floorFit()">FIT</button>
+        <button class="btn btn-ghost" style="padding:3px 10px;font-size:12px;" onclick="floorZoom(0.3)">+</button>
       </div>
     </div>
-    <div style="padding:8px 14px;background:var(--bg2);border-bottom:1px solid var(--border);
-      display:flex;gap:8px;align-items:center;font-size:10px;color:var(--text2);flex-shrink:0;flex-wrap:wrap;">
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#00C9A7;border-radius:2px;display:inline-block;"></span>Active</span>
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#FFD600;border-radius:2px;display:inline-block;"></span>Maintenance</span>
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#ff4455;border-radius:2px;display:inline-block;"></span>Open Ticket</span>
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#5a7090;border-radius:2px;display:inline-block;"></span>Inactive</span>
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#4a6888;border-radius:2px;display:inline-block;"></span>Unknown</span>
-    </div>
-    <canvas id="iso-canvas" style="flex:1;display:block;cursor:grab;touch-action:none;"></canvas>
-    <div style="padding:8px 14px;background:var(--bg2);border-top:1px solid var(--border);
-      font-size:10px;color:var(--text3);text-align:center;">
-      DRAG TO PAN · PINCH OR +/− TO ZOOM · TAP EQUIPMENT TO VIEW
+    <!-- Canvas -->
+    <canvas id="floor-canvas" style="flex:1;display:block;touch-action:none;cursor:crosshair;background:#0b0f0b;"></canvas>
+    <!-- Legend -->
+    <div style="padding:5px 12px;background:var(--bg2);border-top:1px solid var(--border);
+      flex-shrink:0;display:flex;gap:12px;align-items:center;font-size:10px;color:var(--text2);">
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#00C9A7;border-radius:1px;display:inline-block;"></span>Active</span>
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#FFD600;border-radius:1px;display:inline-block;"></span>Maint</span>
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#ff4455;border-radius:1px;display:inline-block;"></span>Ticket</span>
+      <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;background:#4a6888;border-radius:1px;display:inline-block;"></span>Tagged</span>
+      <span style="margin-left:auto;color:var(--text3);">TAP CELL TO TAG</span>
     </div>
   </div>
 
@@ -567,6 +573,47 @@ select.fld option{background:var(--bg3);}
     <button onclick="closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 6px;line-height:1;">×</button>
   </div>
   <div id="check-body" style="overflow:auto;padding:0 16px 36px;display:flex;flex-direction:column;gap:14px;"></div>
+</div>
+
+<!-- FLOOR CELL edit sheet -->
+<div class="sheet" id="sheet-floor-cell">
+  <div class="sh"></div>
+  <div class="sheet-head">
+    <span class="sheet-title" id="fcell-title">CELL</span>
+    <button onclick="closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 6px;line-height:1;margin-left:auto;">×</button>
+  </div>
+  <div class="sheet-body">
+    <div class="fld-wrap">
+      <div class="fld-label">LABEL / EQUIPMENT NAME</div>
+      <input class="fld" id="fcell-label" type="text" placeholder="e.g. BF001023, RTU-B15">
+    </div>
+    <div class="fld-wrap">
+      <div class="fld-label">TYPE</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="bld-btn" onclick="setFcellType(this,'Fan')">Fan</button>
+        <button class="bld-btn" onclick="setFcellType(this,'Sub')">Sub</button>
+        <button class="bld-btn" onclick="setFcellType(this,'Room')">Room</button>
+        <button class="bld-btn" onclick="setFcellType(this,'Door')">Door</button>
+        <button class="bld-btn" onclick="setFcellType(this,'Unit')">Unit</button>
+        <button class="bld-btn" onclick="setFcellType(this,'Other')">Other</button>
+      </div>
+    </div>
+    <div class="fld-wrap">
+      <div class="fld-label">STATUS</div>
+      <select class="fld" id="fcell-status">
+        <option>Unknown</option><option>Active</option>
+        <option>Inactive</option><option>Maintenance</option>
+      </select>
+    </div>
+    <div class="fld-wrap">
+      <div class="fld-label">NOTES</div>
+      <textarea class="fld" id="fcell-notes" rows="2" style="resize:none;" placeholder="e.g. 3-phase, belt-driven…"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" style="flex:1;" onclick="clearFloorCell()">CLEAR CELL</button>
+      <button class="btn btn-cyan" style="flex:2;" onclick="saveFloorCell()">SAVE</button>
+    </div>
+  </div>
 </div>
 
 <!-- ADD EMPLOYEE sheet -->
@@ -1373,7 +1420,7 @@ function toggleMode(){
   const b=document.getElementById('btn-mode');
   if(b){b.className=mode==='pan'?'ico on':'ico';b.textContent=mode==='draw'?'✏️':'✋';}
   const ov=document.getElementById('draw-overlay');
-  if(ov){ ov.style.pointerEvents=mode==='draw'?'all':'none'; ov.style.display=mode==='draw'?'block':'none'; }
+  if(ov){ ov.style.pointerEvents=mode==='draw'?'auto':'none'; ov.style.display=mode==='draw'?'block':'none'; }
   if(mode==='draw')cancelFirstCorner();
   updateHint();
 }
@@ -2800,100 +2847,270 @@ function renderRequestsPanel(){
   updateRequestBadge();
 }
 
-// ── Isometric Floor View ───────────────────────────────────────────────────
-let isoScale=1,isoPanX=0,isoPanY=0,isoInited=false;
-const ISO_TW=80,ISO_TH=40;
+// ── Floor Plan ─────────────────────────────────────────────────────────────
+const FLOOR_BUILDINGS = {
+  B: { name:'B Building', rows:'ABCDEFGHIJKLMNOPQR'.split(''), cols:70, flip:false,
+       desc:'A1–R70 · Right side of plant · Col 1 = center' },
+  D: { name:'D Building', rows:'ABCDEFG'.split(''), cols:56, flip:true,
+       desc:'A1–G56 · Left side of plant · Mirrored' },
+  A: { name:'A Building', rows:'ABCDEFGHIJ'.split(''), cols:50, flip:false, desc:'A1–J50' },
+  W: { name:'W Building', rows:'ABCDE'.split(''), cols:37, flip:false, desc:'A1–E37' },
+};
 
-function isoXY(col,row){
-  return{x:(col-row)*ISO_TW*isoScale/2+isoPanX, y:(col+row)*ISO_TH*isoScale/2+isoPanY};
-}
-function isoFloor(ctx,col,row,color){
-  const{x,y}=isoXY(col,row);
-  const tw=ISO_TW*isoScale/2,th=ISO_TH*isoScale/2;
-  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+tw,y+th);ctx.lineTo(x,y+th*2);ctx.lineTo(x-tw,y+th);ctx.closePath();
-  ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#0a140a';ctx.lineWidth=0.5;ctx.stroke();
-}
-function isoBox(ctx,col,row,color,h=1){
-  const{x,y}=isoXY(col,row);
-  const tw=ISO_TW*isoScale*0.35,th=ISO_TH*isoScale*0.35,bh=ISO_TH*isoScale*h;
-  // top
-  ctx.beginPath();ctx.moveTo(x,y-bh);ctx.lineTo(x+tw,y+th-bh);ctx.lineTo(x,y+th*2-bh);ctx.lineTo(x-tw,y+th-bh);ctx.closePath();
-  ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#0a0a0a';ctx.lineWidth=0.5;ctx.stroke();
-  // left
-  ctx.beginPath();ctx.moveTo(x-tw,y+th-bh);ctx.lineTo(x,y+th*2-bh);ctx.lineTo(x,y+th*2);ctx.lineTo(x-tw,y+th);ctx.closePath();
-  ctx.fillStyle=color+'88';ctx.fill();ctx.strokeStyle='#0a0a0a';ctx.stroke();
-  // right
-  ctx.beginPath();ctx.moveTo(x+tw,y+th-bh);ctx.lineTo(x,y+th*2-bh);ctx.lineTo(x,y+th*2);ctx.lineTo(x+tw,y+th);ctx.closePath();
-  ctx.fillStyle=color+'55';ctx.fill();ctx.strokeStyle='#0a0a0a';ctx.stroke();
-}
-function renderIsoView(){
-  const canvas=document.getElementById('iso-canvas');if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  const W=canvas.parentElement.clientWidth||300;
-  const H=canvas.parentElement.clientHeight-80||300;
-  canvas.width=W;canvas.height=H;
-  ctx.fillStyle='#080f08';ctx.fillRect(0,0,W,H);
+let activeBuilding = 'B';
+let floorScale = 1;
+let floorPanX = 0, floorPanY = 0;
+let floorData = {}; // {building: {cellId: {label,type,status,notes}}}
+let floorEditCell = null; // current cell being edited
+let floorCellType = 'Fan';
+let floorInited = false;
 
-  const COLS=20,ROWS=14;
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      const isWall=r===0||r===ROWS-1||c===0||c===COLS-1||(r===5&&c>2&&c<15)||(c===9&&r>5&&r<10);
-      isoFloor(ctx,c,r,isWall?'#1e2e1e':((c+r)%2===0?'#141f14':'#111c11'));
-      if(isWall) isoBox(ctx,c,r,'#2a4a2a',1.2);
-    }
-  }
+const CELL_W0 = 18, CELL_H0 = 22; // base cell size
+const HDR_W = 22, HDR_H = 18;     // header space for labels
 
-  // Place equipment
-  const equip=rects.filter(r=>r.locationType!=='Sub'&&r.locationType!=='Room'&&r.locationType!=='Door');
-  equip.slice(0,COLS*ROWS/6).forEach((r,i)=>{
-    const col=2+(i%(COLS-4));
-    const row=2+Math.floor(i/(COLS-4))*3;
-    if(row>=ROWS-2||col>=COLS-2)return;
-    const hasOpen=(r.pm?.tickets||[]).some(t=>t.status==='open');
-    const color=hasOpen?'#ff4455':STATUS_COLORS[r.status]||'#4a6888';
-    isoBox(ctx,col,row,color,1.5);
-    if(isoScale>0.6){
-      const{x,y}=isoXY(col,row);
-      ctx.font=`bold ${Math.max(7,8*isoScale)}px IBM Plex Mono,monospace`;
-      ctx.fillStyle='#e0f0ff';ctx.textAlign='center';ctx.textBaseline='bottom';
-      ctx.fillText(r.label.slice(0,10),x,y-ISO_TH*isoScale*1.5-2);
+function loadFloorData(){
+  try{ const d=localStorage.getItem('ft_floordata'); if(d) floorData=JSON.parse(d); }catch(e){}
+}
+function saveFloorData(){
+  try{ localStorage.setItem('ft_floordata', JSON.stringify(floorData)); }catch(e){}
+}
+
+function switchBuilding(id){
+  activeBuilding = id;
+  ['B','D','A','W'].forEach(b=>{
+    const btn=document.getElementById(`fbtn-${b}`);
+    if(btn) btn.className = b===id ? 'ptab on' : 'ptab';
+  });
+  floorFit();
+}
+
+function floorFit(){
+  const canvas = document.getElementById('floor-canvas'); if(!canvas) return;
+  const bld = FLOOR_BUILDINGS[activeBuilding];
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const scaleX = (W - HDR_W - 4) / (bld.cols * CELL_W0);
+  const scaleY = (H - HDR_H - 4) / (bld.rows.length * CELL_H0);
+  floorScale = Math.min(scaleX, scaleY, 3);
+  floorPanX = 0; floorPanY = 0;
+  renderFloorPlan();
+}
+
+function floorZoom(delta){
+  floorScale = Math.max(0.3, Math.min(6, floorScale + delta));
+  renderFloorPlan();
+}
+
+function renderFloorPlan(){
+  const canvas = document.getElementById('floor-canvas'); if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || canvas.parentElement.clientWidth;
+  const H = canvas.offsetHeight || canvas.parentElement.clientHeight - 80;
+  canvas.width = W; canvas.height = H;
+
+  const bld = FLOOR_BUILDINGS[activeBuilding];
+  const cw = CELL_W0 * floorScale;
+  const ch = CELL_H0 * floorScale;
+  const hw = HDR_W * floorScale;
+  const hh = HDR_H * floorScale;
+  const data = floorData[activeBuilding] || {};
+
+  ctx.fillStyle = '#0b0f0b';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(floorPanX, floorPanY);
+
+  // Draw cells
+  bld.rows.forEach((row, ri) => {
+    for(let ci = 0; ci < bld.cols; ci++){
+      const colNum = bld.flip ? bld.cols - ci : ci + 1;
+      const cellId = `${row}-${colNum}`;
+      const cell = data[cellId];
+      const x = hw + ci * cw;
+      const y = hh + ri * ch;
+
+      // Cell background
+      if(cell){
+        const hasTicket = false; // could link to PM tickets later
+        ctx.fillStyle = STATUS_COLORS[cell.status]||'#4a6888';
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(x+0.5, y+0.5, cw-1, ch-1);
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = (ri+ci)%2===0 ? '#0f170f' : '#111a11';
+        ctx.fillRect(x+0.5, y+0.5, cw-1, ch-1);
+      }
+
+      // Cell border
+      ctx.strokeStyle = '#1a2e1a';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x+0.5, y+0.5, cw-1, ch-1);
+
+      // Label if zoomed in enough
+      if(cell && floorScale > 1.2){
+        ctx.fillStyle = '#e0f0ff';
+        ctx.font = `bold ${Math.max(6, 7*floorScale)}px IBM Plex Mono,monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const txt = cell.label || cellId;
+        ctx.fillText(txt.slice(0,8), x + cw/2, y + ch/2);
+      }
     }
   });
 
-  ctx.font='10px IBM Plex Mono,monospace';ctx.fillStyle='#1a3a1a';ctx.textAlign='left';ctx.textBaseline='alphabetic';
-  ctx.fillText(`BUILDING B — SIMULATED VIEW · ${equip.length} TAGS`,10,H-8);
+  // Row labels (A, B, C...)
+  ctx.fillStyle = '#4a7090';
+  ctx.font = `${Math.max(8, 9*floorScale)}px IBM Plex Mono,monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  bld.rows.forEach((row, ri) => {
+    ctx.fillText(row, hw/2, hh + ri*ch + ch/2);
+  });
+
+  // Column labels (every 5 cols)
+  ctx.font = `${Math.max(7, 8*floorScale)}px IBM Plex Mono,monospace`;
+  ctx.textBaseline = 'middle';
+  for(let ci = 0; ci < bld.cols; ci++){
+    const colNum = bld.flip ? bld.cols - ci : ci + 1;
+    if(colNum === 1 || colNum % 10 === 0 || colNum === bld.cols){
+      ctx.textAlign = 'center';
+      ctx.fillText(colNum, hw + ci*cw + cw/2, hh/2);
+    }
+  }
+
+  // Header separators
+  ctx.strokeStyle = '#2a4a2a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(hw, 0); ctx.lineTo(hw, hh + bld.rows.length*ch);
+  ctx.moveTo(0, hh); ctx.lineTo(hw + bld.cols*cw, hh);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Info bar
+  const info = document.getElementById('floor-info');
+  if(info) info.textContent = `${bld.name} · ${bld.rows[0]}1–${bld.rows[bld.rows.length-1]}${bld.cols} · zoom ${Math.round(floorScale*100)}%`;
 }
 
-function initIsoView(){
-  const canvas=document.getElementById('iso-canvas');if(!canvas||isoInited)return;
-  isoInited=true;
-  const p=canvas.parentElement;
-  isoPanX=(p.clientWidth||300)/2;isoPanY=60;
+function floorCanvasTap(clientX, clientY){
+  const canvas = document.getElementById('floor-canvas'); if(!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (clientX - rect.left - floorPanX);
+  const y = (clientY - rect.top  - floorPanY);
+  const bld = FLOOR_BUILDINGS[activeBuilding];
+  const cw = CELL_W0 * floorScale;
+  const ch = CELL_H0 * floorScale;
+  const hw = HDR_W * floorScale;
+  const hh = HDR_H * floorScale;
+  if(x < hw || y < hh) return;
+  const ci = Math.floor((x - hw) / cw);
+  const ri = Math.floor((y - hh) / ch);
+  if(ci < 0 || ci >= bld.cols || ri < 0 || ri >= bld.rows.length) return;
+  const row = bld.rows[ri];
+  const colNum = bld.flip ? bld.cols - ci : ci + 1;
+  const cellId = `${row}-${colNum}`;
+  openFloorCellEdit(cellId, row, colNum);
+}
 
-  let isPan=false,lx=0,ly=0,lastT=[];
-  canvas.addEventListener('mousedown',e=>{isPan=true;lx=e.clientX;ly=e.clientY;canvas.style.cursor='grabbing';});
-  canvas.addEventListener('mousemove',e=>{if(!isPan)return;isoPanX+=e.clientX-lx;isoPanY+=e.clientY-ly;lx=e.clientX;ly=e.clientY;renderIsoView();});
-  canvas.addEventListener('mouseup',()=>{isPan=false;canvas.style.cursor='grab';});
-  canvas.addEventListener('wheel',e=>{e.preventDefault();isoScale=Math.max(0.3,Math.min(4,isoScale+(e.deltaY<0?0.12:-0.12)));renderIsoView();},{passive:false});
-  canvas.addEventListener('touchstart',e=>{e.preventDefault();lastT=[...e.touches];},{passive:false});
+function openFloorCellEdit(cellId, row, col){
+  floorEditCell = cellId;
+  const bld = FLOOR_BUILDINGS[activeBuilding];
+  const cell = (floorData[activeBuilding]||{})[cellId] || {};
+  document.getElementById('fcell-title').textContent =
+    `${bld.name} · ${row}${col}`;
+  document.getElementById('fcell-label').value = cell.label || '';
+  document.getElementById('fcell-status').value = cell.status || 'Unknown';
+  document.getElementById('fcell-notes').value = cell.notes || '';
+  floorCellType = cell.type || 'Fan';
+  document.querySelectorAll('#sheet-floor-cell .bld-btn').forEach(b=>{
+    b.className = b.textContent.trim()===floorCellType ? 'bld-btn on' : 'bld-btn';
+  });
+  openSheet('floor-cell');
+}
+
+function setFcellType(btn, type){
+  floorCellType = type;
+  document.querySelectorAll('#sheet-floor-cell .bld-btn').forEach(b=>b.className='bld-btn');
+  btn.className = 'bld-btn on';
+}
+
+function saveFloorCell(){
+  if(!floorEditCell) return;
+  if(!floorData[activeBuilding]) floorData[activeBuilding]={};
+  floorData[activeBuilding][floorEditCell] = {
+    label: document.getElementById('fcell-label').value.trim(),
+    type: floorCellType,
+    status: document.getElementById('fcell-status').value,
+    notes: document.getElementById('fcell-notes').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+  saveFloorData();
+  closeSheet();
+  renderFloorPlan();
+}
+
+function clearFloorCell(){
+  if(!floorEditCell) return;
+  if(floorData[activeBuilding]) delete floorData[activeBuilding][floorEditCell];
+  saveFloorData(); closeSheet(); renderFloorPlan();
+}
+
+function initFloorPlan(){
+  if(floorInited) return;
+  floorInited = true;
+  const canvas = document.getElementById('floor-canvas'); if(!canvas) return;
+
+  let isPan=false, lx=0, ly=0, lastTs=[], pinchDist0=0, pinchScale0=1;
+
+  canvas.addEventListener('mousedown',e=>{isPan=true;lx=e.clientX;ly=e.clientY;});
+  canvas.addEventListener('mousemove',e=>{
+    if(!isPan)return;
+    floorPanX+=e.clientX-lx;floorPanY+=e.clientY-ly;
+    lx=e.clientX;ly=e.clientY;renderFloorPlan();
+  });
+  canvas.addEventListener('mouseup',e=>{
+    if(Math.abs(e.clientX-lx)<5&&Math.abs(e.clientY-ly)<5) floorCanvasTap(e.clientX,e.clientY);
+    isPan=false;
+  });
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    floorScale=Math.max(0.3,Math.min(6,floorScale+(e.deltaY<0?0.2:-0.2)));
+    renderFloorPlan();
+  },{passive:false});
+
+  canvas.addEventListener('touchstart',e=>{
+    e.preventDefault();lastTs=[...e.touches];
+    if(e.touches.length===2){
+      pinchDist0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      pinchScale0=floorScale;
+    }
+  },{passive:false});
   canvas.addEventListener('touchmove',e=>{
     e.preventDefault();
-    if(e.touches.length===1&&lastT.length>=1){isoPanX+=e.touches[0].clientX-lastT[0].clientX;isoPanY+=e.touches[0].clientY-lastT[0].clientY;}
-    else if(e.touches.length===2&&lastT.length===2){
-      const od=Math.hypot(lastT[0].clientX-lastT[1].clientX,lastT[0].clientY-lastT[1].clientY);
-      const nd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-      if(od>0)isoScale=Math.max(0.3,Math.min(4,isoScale*(nd/od)));
+    if(e.touches.length===1&&lastTs.length===1){
+      floorPanX+=e.touches[0].clientX-lastTs[0].clientX;
+      floorPanY+=e.touches[0].clientY-lastTs[0].clientY;
+    } else if(e.touches.length===2&&lastTs.length===2){
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      floorScale=Math.max(0.3,Math.min(6,pinchScale0*(d/pinchDist0)));
     }
-    lastT=[...e.touches];renderIsoView();
+    lastTs=[...e.touches];renderFloorPlan();
   },{passive:false});
-}
-function zoomIso(dir){isoScale=Math.max(0.3,Math.min(4,isoScale+dir*0.2));renderIsoView();}
-function resetIso(){
-  const canvas=document.getElementById('iso-canvas');if(!canvas)return;
-  isoScale=1;isoPanX=canvas.parentElement.clientWidth/2;isoPanY=60;renderIsoView();
-}
+  canvas.addEventListener('touchend',e=>{
+    if(e.touches.length===0&&lastTs.length===1){
+      const t=e.changedTouches[0];
+      const ox=lastTs[0]?.x||lastTs[0]?.clientX;
+      const oy=lastTs[0]?.y||lastTs[0]?.clientY;
+      if(Math.abs(t.clientX-ox)<10&&Math.abs(t.clientY-oy)<10){
+        floorCanvasTap(t.clientX,t.clientY);
+      }
+    }
+    lastTs=[...e.touches];
+  },{passive:false});
 
-function navTo(name){
+  floorFit();
+}
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const panel=document.getElementById(`panel-${name}`);
@@ -2911,7 +3128,7 @@ function navTo(name){
   else if(name==='checklist'){renderChecklistPanel();}
   else if(name==='requests'){renderRequestsPanel();}
   else if(name==='floorview'){setTimeout(()=>{initIsoView();renderIsoView();},50);}
-  else if(name==='crew'){renderCrewPanel();}
+  else if(name==='floorplan'){initFloorPlan();renderFloorPlan();}
   closeMenu();
   updateFAB();
 }
@@ -2928,7 +3145,7 @@ function closeMenu(){
 }
 
 // ── Sheets ─────────────────────────────────────────────────────────────────
-const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','request','assign','assign-pm','tech-queue','fan-check','grid','new-site','schedule-new','add-employee','add-shift'];
+const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','request','assign','assign-pm','tech-queue','fan-check','floor-cell','grid','new-site','schedule-new','add-employee','add-shift'];
 function openSheet(name){
   SHEETS.forEach(s=>document.getElementById(`sheet-${s}`)?.classList.remove('open'));
   document.getElementById('dimmer').classList.add('open');
