@@ -1968,6 +1968,8 @@ function renderFloorPlan(){
   function sc(ci,ri){return{x:ox+(ci-ri)*TW/2,y:oy+(ci+ri)*TH/2};}
   const data=floorData[activeBuilding]||{};
   const q=(floorSearchQuery||'').toLowerCase().trim();
+  // Normalize "F3" or "F 3" → "f-3" so it matches stored cellId format
+  const qNorm=q.replace(/^([a-r])\s*-?\s*(\d+)$/i,(m,r,n)=>r.toLowerCase()+'-'+n);
   ctx.fillStyle='#080f08';ctx.fillRect(0,0,W,H);
   for(let sum=0;sum<=ROWS+COLS-2;sum++){
     for(let ri=Math.max(0,sum-(COLS-1));ri<=Math.min(ROWS-1,sum);ri++){
@@ -1978,7 +1980,7 @@ function renderFloorPlan(){
       const cell=data[cellId];
       const {x,y}=sc(ci,ri);
       const isEdge=ri===0||ri===ROWS-1||ci===0||ci===COLS-1;
-      const isMatch=q&&(cellId.toLowerCase().includes(q)||(cell?.label||'').toLowerCase().includes(q)||(cell?.notes||'').toLowerCase().includes(q));
+      const isMatch=q&&(cellId.toLowerCase()===qNorm||cellId.toLowerCase().includes(q)||(cell?.label||'').toLowerCase().includes(q)||(cell?.notes||'').toLowerCase().includes(q));
       if(isEdge){
         isoBox(ctx,x,y,TW,TH,WH,
           isMatch?'#00E5FF55':'#2a3e2a',
