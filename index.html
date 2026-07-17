@@ -177,6 +177,12 @@ select.fld option{background:var(--bg3);}
   background:#00E5FF15;border:1px solid #00E5FF30;border-radius:6px;padding:2px 8px;
   font-family:'IBM Plex Mono',monospace;}
 
+/* ── Tools dropdown ── */
+.tool-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background 0.1s;font-size:13px;color:var(--text);}
+.tool-row:active,.tool-row:hover{background:#ffffff0a;}
+.tool-icon{width:24px;text-align:center;font-size:17px;flex-shrink:0;}
+
 /* ── Grid overlay ── */
 .grid-cell-selected{fill:#00E5FF;fill-opacity:0.18;stroke:#00E5FF;stroke-width:1.5;}
 .grid-cell-normal{fill:transparent;stroke:#00E5FF44;stroke-width:0.5;cursor:pointer;}
@@ -197,22 +203,71 @@ select.fld option{background:var(--bg3);}
 <div id="topbar">
   <div id="menu-btn" onclick="toggleMenu()">☰<span class="badge" id="ticket-badge" style="display:none">0</span></div>
   <div id="site-title">FACILITYTAG</div>
-  <div id="btnstrip">
-    <button class="ico" id="btn-undo" disabled onclick="undo()" title="Undo">↩</button>
-    <button class="ico" id="btn-redo" disabled onclick="redo()" title="Redo">↪</button>
-    <button class="ico" id="btn-trash" disabled onclick="trashSelected()">🗑</button>
-    <button class="ico" id="btn-labels" onclick="toggleLabels()" style="font-size:10px;font-weight:700">ABC</button>
-    <button class="ico" id="btn-mode" onclick="toggleMode()">✏️</button>
-    <button class="ico" id="btn-home" onclick="flyHome()" title="Back to facility">🏠</button>
-    <button class="ico" id="btn-location" onclick="toggleLocation()" title="My location">📍</button>
-    <button class="ico" id="btn-droppin" onclick="dropPinAtLocation()" title="Drop tag here">📌</button>
-    <button class="ico" id="btn-nudge" onclick="openSheet('nudge')" title="Nudge all tags">⊹</button>
-    <button class="ico" id="btn-grid" onclick="toggleGrid()" title="Grid mode">⊞</button>
-    <button class="ico" id="btn-load" onclick="document.getElementById('sessfile').click()">📂</button>
-    <input type="file" id="sessfile" accept=".json" style="display:none" onchange="loadFile(this)">
-    <button class="ico" id="btn-list" style="display:none" onclick="showPanel('tickets')">📋</button>
-    <button class="ico" id="btn-save" onclick="saveSession()">💾</button>
+  <div style="display:flex;align-items:center;gap:6px;padding-right:10px;flex-shrink:0;">
+    <button class="ico" id="btn-mode" onclick="toggleMode()" title="Draw/Pan">✏️</button>
+    <button onclick="toggleToolbar()" id="btn-tools"
+      style="background:rgba(13,18,25,0.9);border:1px solid var(--border);color:var(--text);
+        padding:7px 14px;border-radius:12px;font-family:inherit;font-size:12px;font-weight:700;
+        letter-spacing:0.05em;cursor:pointer;display:flex;align-items:center;gap:5px;
+        -webkit-tap-highlight-color:transparent;flex-shrink:0;">
+      TOOLS ▾
+    </button>
   </div>
+</div>
+
+<!-- Tools dropdown -->
+<div id="toolbar-drop" style="display:none;position:fixed;top:54px;right:4px;
+  background:rgba(13,18,25,0.97);border:1px solid var(--border);border-radius:14px;
+  z-index:600;padding:6px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  min-width:180px;max-height:calc(100dvh - 70px);overflow-y:auto;box-shadow:0 8px 32px #00000088;">
+
+  <div style="padding:4px 8px 8px;font-size:9px;color:var(--text3);letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace;border-bottom:1px solid var(--border);margin-bottom:4px;">TOOLS</div>
+
+  <div class="tool-row" id="btn-undo" onclick="undo()" style="opacity:0.3">
+    <span class="tool-icon">↩</span><span>Undo</span>
+  </div>
+  <div class="tool-row" id="btn-redo" onclick="redo()" style="opacity:0.3">
+    <span class="tool-icon">↪</span><span>Redo</span>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+  <div class="tool-row" id="btn-labels" onclick="toggleLabels()">
+    <span class="tool-icon" style="font-size:10px;font-weight:700">ABC</span><span>Toggle Labels</span>
+  </div>
+  <div class="tool-row" onclick="flyHome();closeToolbar()">
+    <span class="tool-icon">🏠</span><span>Fly to Facility</span>
+  </div>
+  <div class="tool-row" onclick="zoomOut();closeToolbar()">
+    <span class="tool-icon">🔭</span><span>Zoom Out</span>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+  <div class="tool-row" id="btn-trash" onclick="trashSelected()" style="opacity:0.3">
+    <span class="tool-icon" style="color:var(--red)">🗑</span><span>Delete Selected</span>
+  </div>
+  <div class="tool-row" id="btn-location" onclick="toggleLocation()">
+    <span class="tool-icon">📍</span><span>My Location</span>
+  </div>
+  <div class="tool-row" id="btn-droppin" onclick="dropPinAtLocation();closeToolbar()">
+    <span class="tool-icon">📌</span><span>Drop Pin Here</span>
+  </div>
+
+  <div class="tool-row" onclick="openSheet('nudge');closeToolbar()">
+    <span class="tool-icon">⊹</span><span>Nudge All Tags</span>
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+  <div class="tool-row" onclick="document.getElementById('sessfile').click();closeToolbar()">
+    <span class="tool-icon">📂</span><span>Open Session</span>
+  </div>
+  <input type="file" id="sessfile" accept=".json" style="display:none" onchange="loadFile(this)">
+  <div class="tool-row" id="btn-save" onclick="saveSession()">
+    <span class="tool-icon">💾</span><span>Save Session</span>
+  </div>
+
 </div>
 
 <!-- Side menu overlay -->
@@ -250,6 +305,9 @@ select.fld option{background:var(--bg3);}
     </div>
     <div class="nav-item" id="nav-settings" onclick="navTo('settings')">
       <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+    </div>
+    <div class="nav-item" onclick="openSheet('nudge');closeMenu()">
+      <span class="nav-icon">⊹</span><span class="nav-label">Nudge Tags</span>
     </div>
   </nav>
   <div class="menu-footer"><div class="menu-ver">v1.0  ·  DEMO</div></div>
@@ -950,8 +1008,8 @@ function undo(){if(hist.idx<=0)return;hist.idx--;rects=JSON.parse(JSON.stringify
 function redo(){if(hist.idx>=hist.stack.length-1)return;hist.idx++;rects=JSON.parse(JSON.stringify(hist.stack[hist.idx]));syncLayers();updateUndoRedo();}
 function updateUndoRedo(){
   const u=document.getElementById('btn-undo'),r2=document.getElementById('btn-redo');
-  u.disabled=hist.idx<=0;r2.disabled=hist.idx>=hist.stack.length-1;
-  u.className=hist.idx>0?'ico on':'ico';r2.className=hist.idx<hist.stack.length-1?'ico on':'ico';
+  if(u)u.style.opacity=hist.idx>0?'1':'0.3';
+  if(r2)r2.style.opacity=hist.idx<hist.stack.length-1?'1':'0.3';
 }
 
 // ── CRUD ───────────────────────────────────────────────────────────────────
@@ -961,8 +1019,10 @@ function selectRect(id,setTrash){
 }
 function setTrashBtn(){
   const b=document.getElementById('btn-trash');
-  b.disabled=!(trashReady&&selected);
-  b.className=(trashReady&&selected)?'ico red-on':'ico';
+  if(!b)return;
+  b.style.opacity=(trashReady&&selected)?'1':'0.3';
+  const icon=b.querySelector('.tool-icon');
+  if(icon)icon.style.color=(trashReady&&selected)?'var(--red)':'inherit';
 }
 function trashSelected(){if(selected&&trashReady)deleteRect(selected);}
 // Fields worth logging in changelog
@@ -1012,8 +1072,7 @@ function toggleLabels(){
     else{l.getTooltip()?.setOpacity(0);}
   });
   const b=document.getElementById('btn-labels');
-  b.className=showLabels?'ico on':'ico';b.style.fontSize='10px';b.style.fontWeight='700';
-  b.textContent=showLabels?'ABC':'abc';
+  if(b){const icon=b.querySelector('.tool-icon');if(icon){icon.textContent=showLabels?'ABC':'abc';icon.style.color=showLabels?'var(--cyan)':'var(--text2)';}}
 }
 function flyHome(){
   const s = getActiveSite();
@@ -1089,17 +1148,34 @@ function createTagAtLocation(lat, lng){
   openSheet('edit');
   setTimeout(()=>document.getElementById('edit-label')?.focus(), 150);
 }
+let toolbarOpen=false;
+function toggleToolbar(){
+  toolbarOpen=!toolbarOpen;
+  const d=document.getElementById('toolbar-drop');
+  if(d)d.style.display=toolbarOpen?'block':'none';
+  const b=document.getElementById('btn-tools');
+  if(b)b.textContent=toolbarOpen?'TOOLS ▴':'TOOLS ▾';
+}
+function closeToolbar(){
+  toolbarOpen=false;
+  const d=document.getElementById('toolbar-drop');if(d)d.style.display='none';
+  const b=document.getElementById('btn-tools');if(b)b.textContent='TOOLS ▾';
+}
+document.addEventListener('click',e=>{
+  const d=document.getElementById('toolbar-drop'),bt=document.getElementById('btn-tools');
+  if(d&&bt&&!d.contains(e.target)&&!bt.contains(e.target))closeToolbar();
+});
+
 function toggleMode(){
   mode=mode==='draw'?'pan':'draw';
   const b=document.getElementById('btn-mode');
-  b.className=mode==='pan'?'ico on':'ico';b.textContent=mode==='draw'?'✏️':'✋';
+  if(b){b.className=mode==='pan'?'ico on':'ico';b.textContent=mode==='draw'?'✏️':'✋';}
   if(mode==='draw')cancelFirstCorner();
   updateHint();
 }
 
 function toggleGrid(){
   gridActive=!gridActive;
-  document.getElementById('btn-grid').className=gridActive?'ico gold-on':'ico';
   if(gridActive){drawGrid();}
   else{clearGrid();closeSheet();}
 }
@@ -1822,24 +1898,22 @@ function toggleLocation(){
 function startLocation(){
   if(!navigator.geolocation){ alert('Location not supported on this device'); return; }
   const btn = document.getElementById('btn-location');
-  btn.textContent = '⏳';
-
+  const icon = btn?.querySelector('.tool-icon');
+  if(icon) icon.textContent='⏳';
   navigator.geolocation.getCurrentPosition(pos => {
     showLocationDot(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-    // Watch for movement — only updates the dot, never moves the map
     locationWatchId = navigator.geolocation.watchPosition(
       p => showLocationDot(p.coords.latitude, p.coords.longitude, p.coords.accuracy),
       err => console.log('Location error:', err),
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
     locationActive = true;
-    btn.className = 'ico on';
-    btn.textContent = '📍';
-    // Fly to location only once on first enable
+    if(btn) btn.style.background='#00E5FF14';
+    if(icon) icon.textContent='📍';
     map.flyTo([pos.coords.latitude, pos.coords.longitude], 19);
   }, err => {
     alert('Could not get location: ' + err.message);
-    btn.textContent = '📍';
+    if(icon) icon.textContent='📍';
   }, { enableHighAccuracy: true, timeout: 15000 });
 }
 
@@ -1848,8 +1922,7 @@ function stopLocation(){
   if(locationMarker){ locationMarker.remove(); locationMarker = null; }
   locationActive = false;
   const btn = document.getElementById('btn-location');
-  btn.className = 'ico';
-  btn.textContent = '📍';
+  if(btn) btn.style.background='';
 }
 
 function showLocationDot(lat, lng, accuracy){
@@ -2114,7 +2187,7 @@ async function saveSession(){
   const payload={version:3,sites,activeSiteId,savedAt:new Date().toISOString()};
   const json=JSON.stringify(payload);
   const fname=`facilitytag-${new Date().toISOString().slice(0,10)}.json`;
-  const flash=()=>{const b=document.getElementById('btn-save');b.textContent='✓';b.className='ico on';setTimeout(()=>{b.textContent='💾';b.className='ico';},1800);};
+  const flash=()=>{const b=document.getElementById('btn-save');if(b){const icon=b.querySelector('.tool-icon');if(icon)icon.textContent='✓';setTimeout(()=>{if(icon)icon.textContent='💾';},1800);}};
   try{
     const file=new File([json],fname,{type:'application/json'});
     if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'FacilityTag Session'});flash();return;}
