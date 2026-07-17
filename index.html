@@ -3276,7 +3276,7 @@ function exportCSV(){
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
-  loadSites();loadCrew();loadChecklist();loadRequests();loadAssignedPMs();
+  loadSites();loadCrew();loadChecklist();loadRequests();loadAssignedPMs();loadFloorData();
   const active=getActiveSite();
   rects=active?.rects||[];
   hist={stack:[JSON.parse(JSON.stringify(rects))],idx:0};
