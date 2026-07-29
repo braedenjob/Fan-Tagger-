@@ -941,7 +941,8 @@ function uid(){return Math.random().toString(36).slice(2,9);}
 function fmtDate(d){return d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';}
 
 // ── State ──────────────────────────────────────────────────────────────────
-let rects=[],selected=null,mode='draw',firstCorner=null,showLabels=true,trashReady=false;
+let _lastLayerClick=0;
+
 let hist={stack:[[]],idx:0};
 let map,layers={},firstMarker=null,listMode='list';
 let gridActive=false,gridLayers=[],selectedCells=new Set(),gridCells=[];
@@ -1007,7 +1008,7 @@ function initMap(){
     {maxZoom:22,maxNativeZoom:19,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:22,maxNativeZoom:19,opacity:0.5,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
-  map.on('click',e=>{if(mode==='draw'&&!e.originalEvent?._stopped)handleTap(e.latlng);});
+  map.on('click',e=>{if(mode==='draw'&&Date.now()-_lastLayerClick>200)handleTap(e.latlng);});
   map.on('moveend',()=>{
     const s=sites.find(s=>s.id===activeSiteId);
     if(s){const c=map.getCenter();s.lat=c.lat;s.lng=c.lng;s.zoom=map.getZoom();}
@@ -1053,7 +1054,7 @@ function syncLayers(){
       if(showLabels)layer.bindTooltip(r.label,{permanent:true,direction:'center',className:'fan-tip'});
       layer.on('click',e=>{
         L.DomEvent.stopPropagation(e);
-        e.originalEvent && (e.originalEvent._stopped=true);
+        _lastLayerClick=Date.now();
         if(firstCorner) cancelFirstCorner();
         selectRect(r.id,true);openSheet('edit');
       });
