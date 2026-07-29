@@ -303,6 +303,9 @@ select.fld option{background:var(--bg3);}
     <div class="nav-item" onclick="openSheet('nudge');closeMenu()">
       <span class="nav-icon">⊹</span><span class="nav-label">Nudge Tags</span>
     </div>
+    <div class="nav-item" onclick="document.getElementById('sessfile2').click();closeMenu()">
+      <span class="nav-icon">📂</span><span class="nav-label">Load Session</span>
+    </div>
   </nav>
   <div class="menu-footer"><div class="menu-ver">v1.0  ·  DEMO</div></div>
 </div>
@@ -472,41 +475,6 @@ select.fld option{background:var(--bg3);}
   <!-- CREW panel -->
 </div>
 <div id="dimmer" onclick="closeSheet()"></div>
-
-<!-- FLOOR CALIBRATION sheet -->
-<div class="sheet" id="sheet-floor-cal">
-  <div class="sh"></div>
-  <div class="sheet-head">
-    <span class="sheet-title">📍 FLOOR LOCATION SETUP</span>
-    <button onclick="closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 6px;line-height:1;margin-left:auto;">×</button>
-  </div>
-  <div class="sheet-body">
-    <div style="background:#00E5FF12;border:1px solid #00E5FF30;border-radius:12px;padding:12px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:4px;">
-      Walk to two corners of the building and tap each button while standing there. This lets the app map your GPS to the grid.
-    </div>
-    <!-- Point 1 -->
-    <div class="fld-wrap">
-      <div class="fld-label">POINT 1 — FIRST CORNER</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input class="fld" id="cal-cell1" placeholder="e.g. A-1" style="flex:1;width:80px;">
-        <button class="btn btn-cyan" style="flex:2;" onclick="calibratePoint(1)">📍 I'M HERE</button>
-      </div>
-      <div id="cal-p1-status" style="font-size:11px;color:var(--text3);margin-top:4px;font-family:'IBM Plex Mono',monospace;"></div>
-    </div>
-    <!-- Point 2 -->
-    <div class="fld-wrap">
-      <div class="fld-label">POINT 2 — OPPOSITE CORNER</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input class="fld" id="cal-cell2" placeholder="e.g. R-70" style="flex:1;width:80px;">
-        <button class="btn btn-cyan" style="flex:2;" onclick="calibratePoint(2)">📍 I'M HERE</button>
-      </div>
-      <div id="cal-p2-status" style="font-size:11px;color:var(--text3);margin-top:4px;font-family:'IBM Plex Mono',monospace;"></div>
-    </div>
-    <div id="cal-saved-status" style="font-size:11px;color:var(--text3);text-align:center;font-family:'IBM Plex Mono',monospace;"></div>
-    <button class="btn btn-green" style="width:100%;" onclick="startFloorTracking()">▶ START TRACKING</button>
-    <button class="btn btn-ghost" style="width:100%;" onclick="stopFloorTracking();closeSheet()">■ STOP TRACKING</button>
-  </div>
-</div>
 
 <!-- ADD EMPLOYEE sheet -->
 <div class="sheet" id="sheet-add-employee">
@@ -2843,6 +2811,11 @@ async function saveSession(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
   a.download=fname;a.click();flash();
 }
+function calibratePoint(){}
+function startFloorTracking(){}
+function stopFloorTracking(){}
+function toggleFloorLocation(){}
+
 function loadFile(input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
