@@ -832,6 +832,7 @@ function fmtDate(d){return d?new Date(d).toLocaleDateString('en-US',{month:'shor
 
 // ── State ──────────────────────────────────────────────────────────────────
 let _lastLayerClick=0;
+let rects=[],selected=null,mode='draw',firstCorner=null,showLabels=true,trashReady=false;
 
 let hist={stack:[[]],idx:0};
 let map,layers={},firstMarker=null,listMode='list';
