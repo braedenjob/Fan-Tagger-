@@ -357,6 +357,26 @@ select.fld option{background:var(--bg3);}
   <!-- MAP panel -->
   <div class="panel active" id="panel-map">
     <div id="map"></div>
+    <!-- Action bubble — appears when a tag is selected -->
+    <div id="map-action-bubble" style="display:none;position:absolute;z-index:500;
+      transform:translateX(-50%);display:none;align-items:center;gap:6px;
+      background:rgba(11,15,20,0.88);border:1px solid rgba(255,255,255,0.13);
+      border-radius:22px;padding:6px 10px;backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);box-shadow:0 4px 20px #00000066;">
+      <button onclick="openSheet('edit')"
+        style="background:none;border:none;color:#e0f0ff;font-size:13px;font-weight:700;
+          cursor:pointer;padding:4px 10px;border-radius:14px;font-family:inherit;
+          -webkit-tap-highlight-color:transparent;display:flex;align-items:center;gap:5px;">
+        ✏️ Edit
+      </button>
+      <div style="width:1px;height:18px;background:rgba(255,255,255,0.15);"></div>
+      <button onclick="deleteSelectedAndClose()"
+        style="background:none;border:none;color:var(--red);font-size:13px;font-weight:700;
+          cursor:pointer;padding:4px 10px;border-radius:14px;font-family:inherit;
+          -webkit-tap-highlight-color:transparent;display:flex;align-items:center;gap:5px;">
+        🗑 Delete
+      </button>
+    </div>
     <!-- Floating transparent search bar -->
     <div id="map-search-wrap" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);
       z-index:400;width:calc(100% - 120px);max-width:320px;">
@@ -980,7 +1000,10 @@ function initMap(){
     {maxZoom:22,maxNativeZoom:19,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:22,maxNativeZoom:19,opacity:0.5,keepBuffer:6,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
-  map.on('click',e=>{if(mode==='draw'&&Date.now()-_lastLayerClick>200)handleTap(e.latlng);});
+  map.on('click',e=>{
+    if(mode==='draw'&&Date.now()-_lastLayerClick>200) handleTap(e.latlng);
+    else if(mode==='pan') hideActionBubble();
+  });
   map.on('moveend',()=>{
     const s=sites.find(s=>s.id===activeSiteId);
     if(s){const c=map.getCenter();s.lat=c.lat;s.lng=c.lng;s.zoom=map.getZoom();}
@@ -1002,7 +1025,9 @@ function handleTap(ll){
     const nr={id,bounds,label:`Fan ${rects.length+1}`,status:'Unknown',notes:'',building:'',assignedTo:'',
       pm:{schedule:null,history:[],tickets:[]}};
     commitRects([...rects,nr]);
-    selectRect(id,false);openSheet('edit');cancelFirstCorner();
+    selectRect(id,false);
+    cancelFirstCorner();
+    setTimeout(()=>showActionBubble(id),100);
     setTimeout(()=>document.getElementById('edit-label')?.focus(),150);
   }
 }
@@ -1028,7 +1053,8 @@ function syncLayers(){
         L.DomEvent.stopPropagation(e);
         _lastLayerClick=Date.now();
         if(firstCorner) cancelFirstCorner();
-        selectRect(r.id,true);openSheet('edit');
+        selectRect(r.id,true);
+        showActionBubble(r.id);
       });
       layers[r.id]=layer;
     }else{
@@ -1117,8 +1143,27 @@ function toggleLabels(){
   const b=document.getElementById('btn-labels');
   if(b){const icon=b.querySelector('.tool-icon');if(icon){icon.textContent=showLabels?'ABC':'abc';icon.style.color=showLabels?'var(--cyan)':'var(--text2)';}}
 }
+// ── Map action bubble ──────────────────────────────────────────────────────
+function showActionBubble(id){
+  const r=rects.find(r=>r.id===id);if(!r||!map)return;
+  const topLat=Math.max(r.bounds[0][0],r.bounds[1][0]);
+  const midLng=(r.bounds[0][1]+r.bounds[1][1])/2;
+  const pt=map.latLngToContainerPoint([topLat,midLng]);
+  const bubble=document.getElementById('map-action-bubble');if(!bubble)return;
+  bubble.style.display='flex';
+  bubble.style.left=pt.x+'px';
+  bubble.style.top=Math.max(60,pt.y-52)+'px';
+}
+function hideActionBubble(){
+  const bubble=document.getElementById('map-action-bubble');
+  if(bubble)bubble.style.display='none';
+}
+function deleteSelectedAndClose(){
+  hideActionBubble();
+  if(selected)deleteRect(selected);
+}
+
 function flyHome(){
-  const s = getActiveSite();
   const lat = s?.homeLat || DEFAULT_COORDS[0];
   const lng = s?.homeLng || DEFAULT_COORDS[1];
   if(map) map.flyTo([lat, lng], 17);
@@ -1191,8 +1236,7 @@ function createTagAtLocation(lat, lng){
   commitRects([...rects, nr]);
   selectRect(id, false);
   map.setView([lat, lng], 19);
-  openSheet('edit');
-  setTimeout(()=>document.getElementById('edit-label')?.focus(), 150);
+  setTimeout(()=>showActionBubble(id), 100);
 }
 let toolbarOpen=false;
 function toggleToolbar(e){
@@ -2276,6 +2320,7 @@ function closeSheet(){
   SHEETS.forEach(s=>document.getElementById(`sheet-${s}`)?.classList.remove('open'));
   document.getElementById('dimmer').classList.remove('open');
   trashReady=false;setTrashBtn();updateFAB();
+  hideActionBubble();
 }
 
 // ── UI helpers ─────────────────────────────────────────────────────────────
