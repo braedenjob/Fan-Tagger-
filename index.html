@@ -205,7 +205,7 @@ select.fld option{background:var(--bg3);}
   <div id="site-title">FACILITYTAG</div>
   <div style="display:flex;align-items:center;gap:6px;padding-right:10px;flex-shrink:0;">
     <button class="ico" id="btn-mode" onclick="toggleMode()" title="Draw/Pan">✏️</button>
-    <button onclick="toggleToolbar()" id="btn-tools"
+    <button onclick="toggleToolbar(event)" id="btn-tools"
       style="background:rgba(13,18,25,0.9);border:1px solid var(--border);color:var(--text);
         padding:7px 14px;border-radius:12px;font-family:inherit;font-size:12px;font-weight:700;
         letter-spacing:0.05em;cursor:pointer;display:flex;align-items:center;gap:5px;
@@ -1038,10 +1038,13 @@ function toggleLabels(){
 }
 function flyHome(){
   const s = getActiveSite();
-  // Use saved home coords, fall back to DEFAULT_COORDS if homeLat not set
   const lat = s?.homeLat || DEFAULT_COORDS[0];
   const lng = s?.homeLng || DEFAULT_COORDS[1];
   if(map) map.flyTo([lat, lng], 17);
+}
+function zoomOut(){
+  if(map)map.fitBounds([[39.855,-88.940],[39.908,-88.878]],{padding:[20,20]});
+  closeToolbar();
 }
 
 function dropPinAtLocation(){
@@ -1111,7 +1114,8 @@ function createTagAtLocation(lat, lng){
   setTimeout(()=>document.getElementById('edit-label')?.focus(), 150);
 }
 let toolbarOpen=false;
-function toggleToolbar(){
+function toggleToolbar(e){
+  if(e&&e.stopPropagation)e.stopPropagation();
   toolbarOpen=!toolbarOpen;
   const d=document.getElementById('toolbar-drop');
   if(d)d.style.display=toolbarOpen?'block':'none';
