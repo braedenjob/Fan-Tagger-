@@ -202,7 +202,21 @@ select.fld option{background:var(--bg3);}
 <!-- Top bar -->
 <div id="topbar">
   <div id="menu-btn" onclick="toggleMenu()">☰<span class="badge" id="ticket-badge" style="display:none">0</span></div>
-  <div id="site-title">FACILITYTAG</div>
+  <!-- Center buttons -->
+  <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center;">
+    <button onclick="navTo('notes');closeMenu()"
+      style="background:rgba(13,18,25,0.7);border:1px solid var(--border);color:var(--text2);
+        padding:6px 12px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;
+        cursor:pointer;display:flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent;">
+      📝 Notes
+    </button>
+    <button onclick="openMapSearch()"
+      style="background:rgba(13,18,25,0.7);border:1px solid var(--border);color:var(--text2);
+        padding:6px 12px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;
+        cursor:pointer;display:flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent;">
+      🔍 Search
+    </button>
+  </div>
   <div style="display:flex;align-items:center;gap:6px;padding-right:10px;flex-shrink:0;">
     <button class="ico" id="btn-mode" onclick="toggleMode()" title="Draw/Pan">✏️</button>
     <button onclick="toggleToolbar(event)" id="btn-tools"
@@ -298,6 +312,47 @@ select.fld option{background:var(--bg3);}
 
 <!-- Content panels -->
 <div id="content">
+
+  <!-- NOTES panel -->
+  <div class="panel" id="panel-notes">
+    <div class="panel-header">
+      <span class="panel-title">📝 NOTES</span>
+      <button class="btn btn-cyan" style="padding:6px 14px;font-size:11px;margin-left:auto;"
+        onclick="openNewTopic()">+ NEW TOPIC</button>
+    </div>
+    <!-- Search bar -->
+    <div style="padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <input id="notes-search" class="fld" placeholder="🔍 Search topics…"
+        oninput="renderNotes()" style="padding:8px 12px;border-radius:20px;width:100%;">
+    </div>
+    <div class="panel-body" id="notes-body" style="padding:14px;"></div>
+  </div>
+
+  <!-- NOTE THREAD panel (shown when a topic is open) -->
+  <div class="panel" id="panel-note-thread">
+    <div class="panel-header">
+      <button onclick="navTo('notes')"
+        style="background:none;border:none;color:var(--cyan);font-size:13px;font-weight:700;
+          cursor:pointer;font-family:inherit;padding:0;flex-shrink:0;">← BACK</button>
+      <span class="panel-title" id="thread-title" style="margin-left:10px;"></span>
+      <button onclick="deleteNoteTopic()" style="background:none;border:none;color:var(--red);
+        font-size:11px;cursor:pointer;margin-left:auto;font-family:inherit;font-weight:700;">DELETE</button>
+    </div>
+    <div id="thread-tag-link" style="padding:6px 14px;background:var(--bg2);border-bottom:1px solid var(--border);
+      flex-shrink:0;font-size:11px;color:var(--text2);display:none;cursor:pointer;"
+      onclick="goToNoteTag()"></div>
+    <!-- Comments list -->
+    <div id="thread-body" style="flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px;"></div>
+    <!-- Add comment -->
+    <div style="padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;align-items:flex-end;">
+      <textarea id="thread-input" placeholder="Add a note…" rows="2"
+        style="flex:1;background:var(--bg2);border:1px solid var(--border);color:#e0f0ff;
+          border-radius:12px;padding:10px 12px;font-family:inherit;font-size:14px;
+          resize:none;outline:none;-webkit-appearance:none;"
+        onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))addComment()"></textarea>
+      <button class="btn btn-cyan" onclick="addComment()" style="padding:10px 16px;flex-shrink:0;">SEND</button>
+    </div>
+  </div>
 
   <!-- MAP panel -->
   <div class="panel active" id="panel-map">
@@ -397,6 +452,32 @@ select.fld option{background:var(--bg3);}
   <!-- CREW panel -->
 </div>
 <div id="dimmer" onclick="closeSheet()"></div>
+
+<!-- NEW TOPIC sheet -->
+<div class="sheet" id="sheet-new-topic">
+  <div class="sh"></div>
+  <div class="sheet-head">
+    <span class="sheet-title">📝 NEW TOPIC</span>
+    <button onclick="closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 6px;line-height:1;margin-left:auto;">×</button>
+  </div>
+  <div class="sheet-body">
+    <div class="fld-wrap">
+      <div class="fld-label">TOPIC TITLE</div>
+      <input class="fld" id="new-topic-title" type="text" placeholder="e.g. BF1023 noise issue, Section B maintenance">
+    </div>
+    <div class="fld-wrap">
+      <div class="fld-label">LINK TO FAN TAG (OPTIONAL)</div>
+      <input class="fld" id="new-topic-tag-search" type="text" placeholder="Search fan label…"
+        oninput="renderTopicTagSearch()">
+      <div id="topic-tag-results" style="margin-top:6px;display:none;background:var(--bg2);
+        border:1px solid var(--border);border-radius:10px;max-height:160px;overflow:auto;"></div>
+      <div id="topic-tag-selected" style="display:none;margin-top:6px;padding:8px 12px;
+        background:#00E5FF12;border:1px solid #00E5FF30;border-radius:10px;
+        font-size:12px;color:var(--cyan);"></div>
+    </div>
+    <button class="btn btn-cyan" style="width:100%;padding:14px;" onclick="createTopic()">CREATE TOPIC</button>
+  </div>
+</div>
 
 <!-- ADD EMPLOYEE sheet -->
 <div class="sheet" id="sheet-add-employee">
@@ -1992,6 +2073,163 @@ function showLocationDot(lat, lng, accuracy){
 }
 
 
+// ── Notes ──────────────────────────────────────────────────────────────────
+let noteTopics = []; // [{id, title, tagId, tagLabel, createdAt, comments:[{id,text,date}]}]
+let activeTopicId = null;
+let selectedTopicTagId = null;
+
+function loadNotes(){
+  try{const n=localStorage.getItem('ft_notes');if(n)noteTopics=JSON.parse(n);}catch(e){}
+}
+function saveNotes(){
+  try{localStorage.setItem('ft_notes',JSON.stringify(noteTopics));}catch(e){}
+}
+
+function openMapSearch(){
+  navTo('map');
+  setTimeout(()=>{
+    const inp=document.getElementById('map-search-input');
+    if(inp){inp.focus();inp.select();}
+  },100);
+}
+
+function openNewTopic(){
+  selectedTopicTagId=null;
+  const ti=document.getElementById('new-topic-title');if(ti)ti.value='';
+  const si=document.getElementById('new-topic-tag-search');if(si)si.value='';
+  const res=document.getElementById('topic-tag-results');if(res)res.style.display='none';
+  const sel=document.getElementById('topic-tag-selected');if(sel)sel.style.display='none';
+  openSheet('new-topic');
+  setTimeout(()=>document.getElementById('new-topic-title')?.focus(),150);
+}
+
+function renderTopicTagSearch(){
+  const q=(document.getElementById('new-topic-tag-search')?.value||'').toLowerCase().trim();
+  const res=document.getElementById('topic-tag-results');
+  const sel=document.getElementById('topic-tag-selected');
+  if(!q){if(res)res.style.display='none';return;}
+  const matches=rects.filter(r=>
+    r.label.toLowerCase().includes(q)||(r.building||'').toLowerCase().includes(q)
+  ).slice(0,6);
+  if(!matches.length){if(res)res.style.display='none';return;}
+  res.innerHTML=matches.map(r=>`
+    <div onclick="selectTopicTag('${r.id}','${r.label.replace(/'/g,"\\'")}${r.building?' ('+r.building+')':''}')"
+      style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;color:#e0f0ff;">
+      ${r.label}${r.building?` <span style="font-size:10px;color:var(--cyan);">${r.building}</span>`:''}
+    </div>`).join('');
+  res.style.display='block';
+  if(sel)sel.style.display='none';
+}
+
+function selectTopicTag(id,label){
+  selectedTopicTagId=id;
+  const res=document.getElementById('topic-tag-results');if(res)res.style.display='none';
+  const sel=document.getElementById('topic-tag-selected');
+  if(sel){sel.textContent='🔗 Linked to: '+label;sel.style.display='block';}
+  const si=document.getElementById('new-topic-tag-search');if(si)si.value='';
+}
+
+function createTopic(){
+  const title=(document.getElementById('new-topic-title')?.value||'').trim();
+  if(!title){alert('Please enter a topic title');return;}
+  const tag=selectedTopicTagId?rects.find(r=>r.id===selectedTopicTagId):null;
+  const topic={
+    id:uid(), title, tagId:selectedTopicTagId||null,
+    tagLabel:tag?tag.label+(tag.building?' ('+tag.building+')':''):null,
+    createdAt:new Date().toISOString(), comments:[]
+  };
+  noteTopics.unshift(topic);
+  saveNotes(); closeSheet();
+  openTopic(topic.id);
+}
+
+function openTopic(id){
+  activeTopicId=id;
+  navTo('note-thread');
+}
+
+function renderNotes(){
+  const body=document.getElementById('notes-body');if(!body)return;
+  const q=(document.getElementById('notes-search')?.value||'').toLowerCase().trim();
+  const src=q?noteTopics.filter(t=>
+    t.title.toLowerCase().includes(q)||
+    (t.tagLabel||'').toLowerCase().includes(q)||
+    t.comments.some(c=>c.text.toLowerCase().includes(q))
+  ):noteTopics;
+  if(!src.length){
+    body.innerHTML='<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-text">No notes yet.<br>Tap + NEW TOPIC to start.</div></div>';
+    return;
+  }
+  body.innerHTML=src.map(t=>{
+    const last=t.comments[t.comments.length-1];
+    return`<div class="card" onclick="openTopic('${t.id}')">
+      <div class="card-icon" style="background:#7B2FBE15;font-size:18px;">📝</div>
+      <div class="card-info">
+        <div class="card-title">${t.title}</div>
+        ${t.tagLabel?`<div class="card-sub" style="color:var(--cyan);">🔗 ${t.tagLabel}</div>`:''}
+        ${last?`<div class="card-sub">${last.text.slice(0,60)}${last.text.length>60?'…':''}</div>`:'<div class="card-sub" style="color:var(--text3);">No notes yet</div>'}
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;font-family:\'IBM Plex Mono\',monospace;">
+          ${t.comments.length} note${t.comments.length!==1?'s':''} · ${fmtDate(last?.date||t.createdAt)}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderThread(){
+  const topic=noteTopics.find(t=>t.id===activeTopicId);if(!topic)return;
+  const title=document.getElementById('thread-title');
+  if(title)title.textContent=topic.title;
+  const tagLink=document.getElementById('thread-tag-link');
+  if(tagLink){
+    if(topic.tagId&&topic.tagLabel){
+      tagLink.style.display='block';
+      tagLink.innerHTML=`🔗 Fan tag: <strong style="color:var(--cyan)">${topic.tagLabel}</strong> — tap to go to map`;
+    } else {
+      tagLink.style.display='none';
+    }
+  }
+  const body=document.getElementById('thread-body');if(!body)return;
+  if(!topic.comments.length){
+    body.innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:30px 0;">No notes yet. Add the first one below.</div>';
+    return;
+  }
+  body.innerHTML=topic.comments.map(c=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+      padding:12px 14px;display:flex;flex-direction:column;gap:4px;">
+      <div style="font-size:14px;color:#e0f0ff;line-height:1.5;">${c.text.replace(/\n/g,'<br>')}</div>
+      <div style="font-size:10px;color:var(--text3);font-family:\'IBM Plex Mono\',monospace;margin-top:2px;">
+        ${fmtDate(c.date)} ${new Date(c.date).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}
+      </div>
+    </div>`).join('');
+  // Scroll to bottom
+  setTimeout(()=>body.scrollTop=body.scrollHeight,50);
+}
+
+function addComment(){
+  const inp=document.getElementById('thread-input');
+  const text=(inp?.value||'').trim();
+  if(!text)return;
+  const topic=noteTopics.find(t=>t.id===activeTopicId);if(!topic)return;
+  topic.comments.push({id:uid(),text,date:new Date().toISOString()});
+  saveNotes();
+  if(inp)inp.value='';
+  renderThread();
+}
+
+function deleteNoteTopic(){
+  if(!activeTopicId)return;
+  if(!confirm('Delete this topic and all its notes?'))return;
+  noteTopics=noteTopics.filter(t=>t.id!==activeTopicId);
+  saveNotes();
+  navTo('notes');
+}
+
+function goToNoteTag(){
+  const topic=noteTopics.find(t=>t.id===activeTopicId);if(!topic?.tagId)return;
+  goToTag(topic.tagId);
+}
+
 function navTo(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2007,7 +2245,8 @@ function navTo(name){
   else if(name==='sites'){renderSitesPanel();}
   else if(name==='settings'){renderSettingsPanel();}
   else if(name==='search'){renderTagSearch();}
-  else if(name==='crew'){renderCrewPanel();}
+  else if(name==='notes'){renderNotes();}
+  else if(name==='note-thread'){renderThread();}
   closeMenu();
   updateFAB();
 }
@@ -2024,7 +2263,7 @@ function closeMenu(){
 }
 
 // ── Sheets ─────────────────────────────────────────────────────────────────
-const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','assign','grid','new-site','schedule-new','add-employee','add-shift'];
+const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','assign','grid','new-site','schedule-new','add-employee','add-shift','new-topic'];
 function openSheet(name){
   SHEETS.forEach(s=>document.getElementById(`sheet-${s}`)?.classList.remove('open'));
   document.getElementById('dimmer').classList.add('open');
@@ -2156,7 +2395,7 @@ function exportCSV(){
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
-  loadSites();loadCrew();
+  loadSites();loadCrew();loadNotes();
   const active=getActiveSite();
   rects=active?.rects||[];
   hist={stack:[JSON.parse(JSON.stringify(rects))],idx:0};
