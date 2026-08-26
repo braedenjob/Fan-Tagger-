@@ -2331,13 +2331,13 @@ function updateHint(){
 }
 function updateTagCount(){
   const b=document.getElementById('btn-list');
-  b.style.display=rects.length>0?'flex':'none';
+  if(b)b.style.display=rects.length>0?'flex':'none';
   updateFAB();
 }
 function updateTicketBadge(){
   const open=rects.reduce((n,r)=>n+(r.pm?.tickets||[]).filter(t=>t.status==='open').length,0);
   const badge=document.getElementById('ticket-badge');
-  badge.textContent=open;badge.style.display=open>0?'block':'none';
+  if(badge){badge.textContent=open;badge.style.display=open>0?'block':'none';}
   document.getElementById('fab-count').textContent=open;
   const nav=document.getElementById('nav-open-count');
   nav.textContent=open;nav.style.display=open>0?'inline':'none';
