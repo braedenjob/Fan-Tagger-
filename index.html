@@ -357,23 +357,23 @@ select.fld option{background:var(--bg3);}
   <!-- MAP panel -->
   <div class="panel active" id="panel-map">
     <div id="map"></div>
-    <!-- Action bubble — appears when a tag is selected -->
-    <div id="map-action-bubble" style="display:none;position:absolute;z-index:500;
-      transform:translateX(-50%);display:none;align-items:center;gap:6px;
-      background:rgba(11,15,20,0.88);border:1px solid rgba(255,255,255,0.13);
-      border-radius:22px;padding:6px 10px;backdrop-filter:blur(12px);
-      -webkit-backdrop-filter:blur(12px);box-shadow:0 4px 20px #00000066;">
+    <!-- Action bubble — fixed at bottom when a tag is selected -->
+    <div id="map-action-bubble" style="display:none;position:absolute;bottom:36px;left:50%;
+      transform:translateX(-50%);z-index:500;align-items:center;gap:6px;
+      background:rgba(11,15,20,0.92);border:1px solid rgba(255,255,255,0.15);
+      border-radius:22px;padding:8px 12px;backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);box-shadow:0 4px 24px #00000088;white-space:nowrap;">
+      <span id="bubble-label" style="font-size:11px;color:var(--text2);font-family:'IBM Plex Mono',monospace;max-width:140px;overflow:hidden;text-overflow:ellipsis;"></span>
+      <div style="width:1px;height:18px;background:rgba(255,255,255,0.15);"></div>
       <button onclick="openSheet('edit')"
         style="background:none;border:none;color:#e0f0ff;font-size:13px;font-weight:700;
-          cursor:pointer;padding:4px 10px;border-radius:14px;font-family:inherit;
-          -webkit-tap-highlight-color:transparent;display:flex;align-items:center;gap:5px;">
+          cursor:pointer;padding:4px 10px;font-family:inherit;-webkit-tap-highlight-color:transparent;">
         ✏️ Edit
       </button>
       <div style="width:1px;height:18px;background:rgba(255,255,255,0.15);"></div>
       <button onclick="deleteSelectedAndClose()"
         style="background:none;border:none;color:var(--red);font-size:13px;font-weight:700;
-          cursor:pointer;padding:4px 10px;border-radius:14px;font-family:inherit;
-          -webkit-tap-highlight-color:transparent;display:flex;align-items:center;gap:5px;">
+          cursor:pointer;padding:4px 10px;font-family:inherit;-webkit-tap-highlight-color:transparent;">
         🗑 Delete
       </button>
     </div>
@@ -1027,7 +1027,8 @@ function handleTap(ll){
     commitRects([...rects,nr]);
     selectRect(id,false);
     cancelFirstCorner();
-    setTimeout(()=>showActionBubble(id),100);
+    openSheet('edit');
+    setTimeout(()=>document.getElementById('edit-label')?.focus(),150);
     setTimeout(()=>document.getElementById('edit-label')?.focus(),150);
   }
 }
@@ -1145,14 +1146,11 @@ function toggleLabels(){
 }
 // ── Map action bubble ──────────────────────────────────────────────────────
 function showActionBubble(id){
-  const r=rects.find(r=>r.id===id);if(!r||!map)return;
-  const topLat=Math.max(r.bounds[0][0],r.bounds[1][0]);
-  const midLng=(r.bounds[0][1]+r.bounds[1][1])/2;
-  const pt=map.latLngToContainerPoint([topLat,midLng]);
+  const r=rects.find(r=>r.id===id);if(!r)return;
   const bubble=document.getElementById('map-action-bubble');if(!bubble)return;
+  const lbl=document.getElementById('bubble-label');
+  if(lbl)lbl.textContent=r.label||(r.building?'Bldg '+r.building:'Tag');
   bubble.style.display='flex';
-  bubble.style.left=pt.x+'px';
-  bubble.style.top=Math.max(60,pt.y-52)+'px';
 }
 function hideActionBubble(){
   const bubble=document.getElementById('map-action-bubble');
@@ -1236,7 +1234,8 @@ function createTagAtLocation(lat, lng){
   commitRects([...rects, nr]);
   selectRect(id, false);
   map.setView([lat, lng], 19);
-  setTimeout(()=>showActionBubble(id), 100);
+  openSheet('edit');
+  setTimeout(()=>document.getElementById('edit-label')?.focus(), 150);
 }
 let toolbarOpen=false;
 function toggleToolbar(e){
