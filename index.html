@@ -1119,10 +1119,18 @@ function updateField(field, value){
   if(field==='status'){const el=document.getElementById('edit-status');if(el)el.style.color=STATUS_COLORS[value]||'#c8d8e8';}
   saveSites();
 }
-function deleteSelected(){if(selected)deleteRect(selected);}
+function deleteSelected(){
+  if(!selected) return;
+  const id = selected;
+  selected = null;
+  trashReady = false;
+  closeSheet();
+  hideActionBubble();
+  deleteRect(id);
+}
 function deleteRect(id){
   commitRects(rects.filter(r=>r.id!==id));
-  if(selected===id){selected=null;trashReady=false;setTrashBtn();closeSheet();}
+  if(selected===id){selected=null;trashReady=false;setTrashBtn();closeSheet();hideActionBubble();}
 }
 function getSelectedRect(){return rects.find(r=>r.id===selected);}
 
