@@ -667,15 +667,28 @@ select.fld option{background:var(--bg3);}
     <button onclick="closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 2px;line-height:1;margin-left:auto;">×</button>
   </div>
   <div class="sheet-body" style="padding:16px;">
-    <div style="font-size:11px;color:var(--text2);margin-bottom:12px;text-align:center;">Adjust grid cell size (meters)</div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;">
-      <label style="font-size:12px;color:var(--text2);flex-shrink:0;">Cell size (m)</label>
-      <input type="number" id="grid-cell-size" min="1" max="500" step="1" value="20"
-        style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
-        color:#e0f0ff;padding:10px;font-size:15px;text-align:center;"
-        oninput="updateGridLive()">
+    <div style="font-size:11px;color:var(--text2);margin-bottom:14px;text-align:center;">
+      Type start and end zone addresses
     </div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:4px;letter-spacing:0.08em;">START</div>
+        <input type="text" id="grid-start" value="A1" maxlength="6"
+          style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+          color:#e0f0ff;padding:12px;font-size:18px;text-align:center;font-family:'IBM Plex Mono',monospace;box-sizing:border-box;"
+          oninput="updateGridLive()" placeholder="A1">
+      </div>
+      <div style="font-size:20px;color:var(--text3);margin-top:16px;">→</div>
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:4px;letter-spacing:0.08em;">END</div>
+        <input type="text" id="grid-end" value="G23" maxlength="6"
+          style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+          color:#e0f0ff;padding:12px;font-size:18px;text-align:center;font-family:'IBM Plex Mono',monospace;box-sizing:border-box;"
+          oninput="updateGridLive()" placeholder="G23">
+      </div>
+    </div>
+    <div id="grid-preview-label" style="font-size:11px;color:var(--cyan);text-align:center;margin-bottom:14px;min-height:16px;"></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;">
       <label style="font-size:12px;color:var(--text2);flex-shrink:0;">Opacity</label>
       <input type="range" id="grid-opacity" min="5" max="60" value="20"
         style="flex:1;" oninput="updateGridLive()">
@@ -993,7 +1006,7 @@ function fmtDate(d){return d?new Date(d).toLocaleDateString('en-US',{month:'shor
 
 // ── State ──────────────────────────────────────────────────────────────────
 let _lastLayerClick=0;
-let rects=[],selected=null,mode='draw',firstCorner=null,showLabels=true,trashReady=false;
+let rects=[],selected=null,mode='draw',firstCorner=null,showLabels=true,trashReady=false,lastLoadedFilename=null;
 
 let hist={stack:[[]],idx:0};
 let map,layers={},firstMarker=null,listMode='list';
@@ -2357,38 +2370,81 @@ function goToNoteTag(){
 
 // ── Grid ───────────────────────────────────────────────────────────────────
 let gridLayer = null;
+let gridLabelLayer = null;
 let gridVisible = false;
-let gridCellMeters = 20;
 let gridOpacityPct = 20;
-let gridBounds = null;      // [[sw.lat,sw.lng],[ne.lat,ne.lng]]
-let gridFirstCorner = null; // L.LatLng
+let gridBounds = null;
+let gridFirstCorner = null;
 let gridCornerMarker = null;
 let gridPrevMode = 'draw';
+let gridStart = 'A1';
+let gridEnd = 'G23';
 
-function metersToLatDeg(m){ return m / 111320; }
-function metersToLngDeg(m, lat){ return m / (111320 * Math.cos(lat * Math.PI / 180)); }
+// Parse address like "B4" → {col:1, row:3} (0-indexed)
+function parseGridAddr(s){
+  const m = s.trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  if(!m) return null;
+  let col = 0;
+  for(let i=0;i<m[1].length;i++) col = col*26 + (m[1].charCodeAt(i)-64);
+  col--; // 0-indexed
+  const row = parseInt(m[2]) - 1;
+  return {col, row};
+}
+
+// Convert 0-indexed col to letter(s): 0→A, 25→Z, 26→AA
+function colLabel(n){
+  let s='';
+  n++;
+  while(n>0){ s=String.fromCharCode(64+(n%26||26))+s; n=Math.floor((n-(n%26||26))/26); }
+  return s;
+}
 
 function drawGridFromBounds(b){
-  if(gridLayer){ gridLayer.remove(); gridLayer = null; }
+  if(gridLayer){ gridLayer.remove(); gridLayer=null; }
+  if(gridLabelLayer){ gridLabelLayer.remove(); gridLabelLayer=null; }
   const sw = L.latLng(Math.min(b[0][0],b[1][0]), Math.min(b[0][1],b[1][1]));
   const ne = L.latLng(Math.max(b[0][0],b[1][0]), Math.max(b[0][1],b[1][1]));
-  const refLat = (sw.lat + ne.lat) / 2;
-  const dLat = metersToLatDeg(gridCellMeters);
-  const dLng = metersToLngDeg(gridCellMeters, refLat);
-  const lines = [];
-  // Outline rect
-  lines.push([[sw.lat,sw.lng],[sw.lat,ne.lng],[ne.lat,ne.lng],[ne.lat,sw.lng],[sw.lat,sw.lng]]);
-  // Horizontal lines
-  for(let lat = sw.lat + dLat; lat < ne.lat; lat += dLat)
-    lines.push([[lat,sw.lng],[lat,ne.lng]]);
+  const start = parseGridAddr(gridStart);
+  const end = parseGridAddr(gridEnd);
+  if(!start||!end) return;
+  const startCol=Math.min(start.col,end.col), endCol=Math.max(start.col,end.col);
+  const startRow=Math.min(start.row,end.row), endRow=Math.max(start.row,end.row);
+  const cols = endCol - startCol + 1;
+  const rows = endRow - startRow + 1;
+  const latSpan = ne.lat - sw.lat;
+  const lngSpan = ne.lng - sw.lng;
+  const dLat = latSpan / rows;
+  const dLng = lngSpan / cols;
+  const op = gridOpacityPct / 100;
+  const polylines = [];
   // Vertical lines
-  for(let lng = sw.lng + dLng; lng < ne.lng; lng += dLng)
-    lines.push([[sw.lat,lng],[ne.lat,lng]]);
-  gridLayer = L.layerGroup(
-    lines.map(pts => L.polyline(pts, {
-      color: '#00E5FF', weight: 0.8, opacity: gridOpacityPct/100, interactive: false
-    }))
-  ).addTo(map);
+  for(let c=0; c<=cols; c++){
+    const lng = sw.lng + c*dLng;
+    polylines.push(L.polyline([[sw.lat,lng],[ne.lat,lng]],{color:'#00E5FF',weight:c===0||c===cols?1.5:0.8,opacity:op,interactive:false}));
+  }
+  // Horizontal lines
+  for(let r=0; r<=rows; r++){
+    const lat = sw.lat + r*dLat;
+    polylines.push(L.polyline([[lat,sw.lng],[lat,ne.lng]],{color:'#00E5FF',weight:r===0||r===rows?1.5:0.8,opacity:op,interactive:false}));
+  }
+  gridLayer = L.layerGroup(polylines).addTo(map);
+  // Zone labels inside each cell
+  const markers = [];
+  for(let c=0;c<cols;c++){
+    for(let r=0;r<rows;r++){
+      const cellLat = sw.lat + (r+0.5)*dLat;
+      const cellLng = sw.lng + (c+0.5)*dLng;
+      const label = colLabel(startCol+c) + (startRow+r+1);
+      const icon = L.divIcon({
+        html:`<div style="color:#00E5FF;font-size:9px;font-family:'IBM Plex Mono',monospace;
+          opacity:${Math.min(op*3,0.7)};white-space:nowrap;text-shadow:0 0 4px #000c;
+          pointer-events:none;">${label}</div>`,
+        className:'', iconSize:[28,12], iconAnchor:[14,6]
+      });
+      markers.push(L.marker([cellLat,cellLng],{icon,interactive:false,zIndexOffset:-100}));
+    }
+  }
+  gridLabelLayer = L.layerGroup(markers).addTo(map);
   gridVisible = true;
   gridBounds = [[sw.lat,sw.lng],[ne.lat,ne.lng]];
   const lbl = document.getElementById('grid-tool-label');
@@ -2396,17 +2452,18 @@ function drawGridFromBounds(b){
 }
 
 function hideGrid(){
-  if(gridLayer){ gridLayer.remove(); gridLayer = null; }
+  if(gridLayer){ gridLayer.remove(); gridLayer=null; }
+  if(gridLabelLayer){ gridLabelLayer.remove(); gridLabelLayer=null; }
   gridVisible = false;
-  const lbl = document.getElementById('grid-tool-label');
-  if(lbl) lbl.textContent = 'Draw Grid';
   gridBounds = null;
   cancelGridCorner();
+  const lbl = document.getElementById('grid-tool-label');
+  if(lbl) lbl.textContent = 'Draw Grid';
 }
 
 function toggleGrid(){
-  if(gridVisible){ openSheet('grid'); }
-  else { startGridDraw(); }
+  if(gridVisible) openSheet('grid');
+  else startGridDraw();
 }
 
 function startGridDraw(){
@@ -2422,50 +2479,65 @@ function handleGridTap(ll){
   if(!gridFirstCorner){
     gridFirstCorner = ll;
     gridCornerMarker = L.circleMarker([ll.lat,ll.lng],{
-      radius:7, color:'#00E5FF', fillColor:'#00E5FF', fillOpacity:0.9, interactive:false
+      radius:7,color:'#00E5FF',fillColor:'#00E5FF',fillOpacity:0.9,interactive:false
     }).addTo(map);
     updateStatusBar();
   } else {
-    const b = [[gridFirstCorner.lat,gridFirstCorner.lng],[ll.lat,ll.lng]];
+    const b=[[gridFirstCorner.lat,gridFirstCorner.lng],[ll.lat,ll.lng]];
     cancelGridCorner();
     mode = gridPrevMode;
     drawGridFromBounds(b);
-    // sync inputs
-    const szEl=document.getElementById('grid-cell-size');
-    if(szEl) szEl.value = gridCellMeters;
+    // sync sheet inputs
+    const stEl=document.getElementById('grid-start');
+    const enEl=document.getElementById('grid-end');
     const opEl=document.getElementById('grid-opacity');
-    if(opEl){ opEl.value=gridOpacityPct; document.getElementById('grid-opacity-val').textContent=gridOpacityPct+'%'; }
+    if(stEl) stEl.value=gridStart;
+    if(enEl) enEl.value=gridEnd;
+    if(opEl){ opEl.value=gridOpacityPct; const v=document.getElementById('grid-opacity-val');if(v)v.textContent=gridOpacityPct+'%'; }
+    updateGridPreviewLabel();
     openSheet('grid');
     updateStatusBar();
   }
 }
 
 function cancelGridCorner(){
-  gridFirstCorner = null;
-  if(gridCornerMarker){ gridCornerMarker.remove(); gridCornerMarker = null; }
+  gridFirstCorner=null;
+  if(gridCornerMarker){gridCornerMarker.remove();gridCornerMarker=null;}
+}
+
+function updateGridPreviewLabel(){
+  const el=document.getElementById('grid-preview-label');
+  if(!el) return;
+  const stEl=document.getElementById('grid-start');
+  const enEl=document.getElementById('grid-end');
+  if(!stEl||!enEl){el.textContent='';return;}
+  const s=parseGridAddr(stEl.value);
+  const e=parseGridAddr(enEl.value);
+  if(!s||!e){el.textContent='Invalid address';return;}
+  const cols=Math.abs(e.col-s.col)+1;
+  const rows=Math.abs(e.row-s.row)+1;
+  el.textContent=`${cols} columns × ${rows} rows = ${cols*rows} zones`;
 }
 
 function applyGrid(){
-  const szEl = document.getElementById('grid-cell-size');
-  const opEl = document.getElementById('grid-opacity');
-  if(szEl){ const v = parseFloat(szEl.value); if(v>0) gridCellMeters = v; }
-  if(opEl){ gridOpacityPct = parseInt(opEl.value); }
+  const stEl=document.getElementById('grid-start');
+  const enEl=document.getElementById('grid-end');
+  const opEl=document.getElementById('grid-opacity');
+  if(stEl&&parseGridAddr(stEl.value)) gridStart=stEl.value.trim().toUpperCase();
+  if(enEl&&parseGridAddr(enEl.value)) gridEnd=enEl.value.trim().toUpperCase();
+  if(opEl) gridOpacityPct=parseInt(opEl.value);
   if(gridBounds) drawGridFromBounds(gridBounds);
 }
 
 function updateGridLive(){
-  const opEl = document.getElementById('grid-opacity');
-  const valEl = document.getElementById('grid-opacity-val');
-  if(opEl && valEl) valEl.textContent = opEl.value + '%';
-  if(gridVisible && gridBounds){
-    const szEl=document.getElementById('grid-cell-size');
-    if(szEl){ const v=parseFloat(szEl.value); if(v>0) gridCellMeters=v; }
-    gridOpacityPct = parseInt(opEl.value);
-    drawGridFromBounds(gridBounds);
-  }
+  const opEl=document.getElementById('grid-opacity');
+  const valEl=document.getElementById('grid-opacity-val');
+  if(opEl&&valEl) valEl.textContent=opEl.value+'%';
+  updateGridPreviewLabel();
+  if(gridVisible&&gridBounds) applyGrid();
 }
 
-function attachGridRedraw(){ /* grid is static to its placed bounds, no redraw needed */ }
+function attachGridRedraw(){}
 
 // ── Checklist ──────────────────────────────────────────────────────────────
 let checklist = []; // [{id, tagId, checked}]
@@ -2758,21 +2830,21 @@ function useMapCenter(){
 
 // ── Save / Load ────────────────────────────────────────────────────────────
 async function saveSession(){
+  // Flush current rects into the active site before saving
+  const activeSite=sites.find(s=>s.id===activeSiteId);
+  if(activeSite) activeSite.rects=rects;
   saveSites();
   const payload={version:3,sites,activeSiteId,savedAt:new Date().toISOString()};
   const json=JSON.stringify(payload);
-  const fname=`facilitytag-${new Date().toISOString().slice(0,10)}.json`;
+  const fname=lastLoadedFilename||`facilitytag-${new Date().toISOString().slice(0,10)}.json`;
   const flash=()=>{const b=document.getElementById('btn-save');if(b){const icon=b.querySelector('.tool-icon');if(icon)icon.textContent='✓';setTimeout(()=>{if(icon)icon.textContent='💾';},1800);}};
-  try{
-    const file=new File([json],fname,{type:'application/json'});
-    if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'FacilityTag Session'});flash();return;}
-  }catch(e){if(e.name==='AbortError')return;}
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
-  a.download=fname;a.click();flash();
+  a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);flash();
 }
 
 function loadFile(input){
   const file=input.files[0];if(!file)return;
+  lastLoadedFilename=file.name;
   const reader=new FileReader();
   reader.onload=e=>{
     try{
