@@ -1149,7 +1149,7 @@ function fmtDate(d){return d?new Date(d).toLocaleDateString('en-US',{month:'shor
 let _lastLayerClick=0;
 let rects=[],selected=null,mode='draw',firstCorner=null,showLabels=true,trashReady=false,lastLoadedFilename=null;
 let defaultPrefix='BF';
-let batchCount=0, batchDrawn=[];
+let batchMode=false, batchPendingBounds=null, batchDrawn=[], batchCount=0;
 
 let hist={stack:[[]],idx:0};
 let map,layers={},firstMarker=null,listMode='list';
@@ -1241,31 +1241,12 @@ function handleTap(ll){
     const ne=[Math.max(fc.lat,ll.lat),Math.max(fc.lng,ll.lng)];
     cancelFirstCorner();
 
-    if(batchCount>0){
-      // Split the drawn box into batchCount equal pieces along the longer axis
-      const n=batchCount;
-      const latSpan=ne[0]-sw[0];
-      const lngSpan=ne[1]-sw[1];
-      const splitLat=latSpan>=lngSpan; // true = slice horizontally (stacked rows), false = slice vertically (side by side columns)
-      const newRects=[];
-      for(let i=0;i<n;i++){
-        const id=uid();
-        let b;
-        if(splitLat){
-          const rowH=latSpan/n;
-          b=[[sw[0]+i*rowH,sw[1]],[sw[0]+(i+1)*rowH,ne[1]]];
-        }else{
-          const colW=lngSpan/n;
-          b=[[sw[0],sw[1]+i*colW],[ne[0],sw[1]+(i+1)*colW]];
-        }
-        newRects.push({id,bounds:b,label:defaultPrefix+(rects.length+newRects.length+1),
-          status:'Unknown',notes:'',building:'',assignedTo:'',pm:{schedule:null,history:[],tickets:[]}});
-      }
-      batchDrawn=newRects.map(r=>r.id);
-      batchCount=0;
-      commitRects([...rects,...newRects]);
-      selectRect(null,false);
-      openBatchRename();
+    if(batchMode){
+      // Box drawn — now ask how many to split into
+      batchPendingBounds={sw,ne};
+      batchMode=false;
+      updateHint();
+      showBatchPopup();
       return;
     }
 
@@ -2775,6 +2756,11 @@ function savePrefix(){
 
 // ── Batch Draw ────────────────────────────────────────────────────────────
 function openBatchSheet(){
+  // Activate batch draw mode — user draws first, then picks count
+  batchMode=true; batchPendingBounds=null; batchDrawn=[];
+  mode='draw'; updateHint();
+}
+function showBatchPopup(){
   const p=document.getElementById('batch-popup');
   if(p){ p.style.display='block'; }
 }
@@ -2783,16 +2769,38 @@ function hideBatchPopup(){
   if(p){ p.style.display='none'; }
 }
 function startBatch(n){
-  batchCount=n; batchDrawn=[];
   hideBatchPopup();
-  mode='draw'; updateHint();
+  if(!batchPendingBounds){ updateHint(); return; }
+  const {sw,ne}=batchPendingBounds;
+  batchPendingBounds=null;
+  const latSpan=ne[0]-sw[0];
+  const lngSpan=ne[1]-sw[1];
+  const splitLat=latSpan>=lngSpan;
+  const newRects=[];
+  for(let i=0;i<n;i++){
+    const id=uid();
+    let b;
+    if(splitLat){
+      const rowH=latSpan/n;
+      b=[[sw[0]+i*rowH,sw[1]],[sw[0]+(i+1)*rowH,ne[1]]];
+    }else{
+      const colW=lngSpan/n;
+      b=[[sw[0],sw[1]+i*colW],[ne[0],sw[1]+(i+1)*colW]];
+    }
+    newRects.push({id,bounds:b,label:defaultPrefix+(rects.length+newRects.length+1),
+      status:'Unknown',notes:'',building:'',assignedTo:'',pm:{schedule:null,history:[],tickets:[]}});
+  }
+  batchDrawn=newRects.map(r=>r.id);
+  commitRects([...rects,...newRects]);
+  selectRect(null,false);
+  openBatchRename();
 }
 function startBatchCustom(){
   const n=parseInt(document.getElementById('batch-custom-count')?.value||'0');
   if(!n||n<1){alert('Enter a number.');return;}
   startBatch(n);
 }
-function cancelBatch(){ batchCount=0; batchDrawn=[]; updateHint(); }
+function cancelBatch(){ batchMode=false; batchPendingBounds=null; batchDrawn=[]; hideBatchPopup(); updateHint(); }
 function openBatchRename(){
   const body=document.getElementById('batch-rename-body');
   if(!body)return;
@@ -3204,9 +3212,9 @@ function updateHint(){
   if(mode==='pan'){el.className='';el.innerHTML='DRAG TO PAN  ·  PINCH TO ZOOM';}
   else if(mode==='grid'&&gridFirstCorner){el.className='first';el.innerHTML='TAP OPPOSITE CORNER'+cancelBtn("cancelGridCorner();mode=gridPrevMode;updateStatusBar()");}
   else if(mode==='grid'){el.className='first';el.innerHTML='TAP FIRST CORNER OF GRID'+cancelBtn("mode=gridPrevMode;updateStatusBar()");}
-  else if(firstCorner&&batchCount>0){el.className='first';el.innerHTML=`BATCH ×${batchCount} — TAP OPPOSITE CORNER`+cancelBtn("cancelFirstCorner();cancelBatch()");}
+  else if(firstCorner&&batchMode){el.className='first';el.innerHTML='BATCH — TAP OPPOSITE CORNER'+cancelBtn("cancelFirstCorner();cancelBatch()");}
   else if(firstCorner){el.className='first';el.innerHTML='TAP BOTTOM-RIGHT CORNER'+cancelBtn("cancelFirstCorner()");}
-  else if(batchCount>0){el.className='first';el.innerHTML=`BATCH ×${batchCount} — DRAW ONE BOX AROUND ALL UNITS`+cancelBtn("cancelBatch();updateHint()");}
+  else if(batchMode){el.className='first';el.innerHTML='BATCH — DRAW A BOX AROUND THE UNITS'+cancelBtn("cancelBatch()");}
   else{el.className='';el.innerHTML='TAP TOP-LEFT · TAP BOTTOM-RIGHT · PINCH TO ZOOM';}
 }
 function updateTagCount(){
@@ -3273,16 +3281,13 @@ async function saveSession(){
   saveSites();
   const payload={version:3,sites,activeSiteId,savedAt:new Date().toISOString()};
   const json=JSON.stringify(payload);
-  const fname=lastLoadedFilename||`facilitytag-${new Date().toISOString().slice(0,10)}.json`;
+  const fname='rooftagsave.json';
   const flash=()=>{const b=document.getElementById('btn-save');if(b){const icon=b.querySelector('.tool-icon');if(icon)icon.textContent='✓';setTimeout(()=>{if(icon)icon.textContent='💾';},1800);}};
   const blob=new Blob([json],{type:'application/json'});
-  const file=new File([blob],fname,{type:'application/json'});
-  if(navigator.canShare?.({files:[file]})){
-    try{await navigator.share({files:[file],title:'FacilityTag Session'});flash();}catch(e){if(e.name!=='AbortError'){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);flash();}}
-    return;
-  }
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);flash();
+  a.download=fname;document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(a.href);},1000);
+  flash();
 }
 
 function loadFile(input){
