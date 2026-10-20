@@ -688,11 +688,29 @@ select.fld option{background:var(--bg3);}
       </div>
     </div>
     <div id="grid-preview-label" style="font-size:11px;color:var(--cyan);text-align:center;margin-bottom:14px;min-height:16px;"></div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--text2);margin-bottom:6px;letter-spacing:0.08em;">ORIENTATION</div>
+      <div style="display:flex;gap:6px;">
+        <button id="grid-orient-v" class="bld-btn on" style="flex:1;font-size:12px;" onclick="setGridOrientation('vertical')">Letters ↕ top→bottom</button>
+        <button id="grid-orient-h" class="bld-btn" style="flex:1;font-size:12px;" onclick="setGridOrientation('horizontal')">Letters ↔ left→right</button>
+      </div>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;">
       <label style="font-size:12px;color:var(--text2);flex-shrink:0;">Opacity</label>
       <input type="range" id="grid-opacity" min="5" max="60" value="20"
         style="flex:1;" oninput="updateGridLive()">
       <span id="grid-opacity-val" style="font-size:12px;color:var(--text2);width:30px;text-align:right;">20%</span>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--text2);margin-bottom:6px;letter-spacing:0.08em;">GO TO SECTION</div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="grid-goto" maxlength="6" placeholder="e.g. 24G or B7"
+          style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+          color:#e0f0ff;padding:10px;font-size:16px;text-align:center;font-family:'IBM Plex Mono',monospace;box-sizing:border-box;"
+          onkeydown="if(event.key==='Enter')gotoGridSection()">
+        <button class="btn btn-cyan" style="padding:10px 16px;" onclick="gotoGridSection()">GO</button>
+      </div>
+      <div id="grid-goto-msg" style="font-size:11px;color:var(--text2);margin-top:4px;min-height:14px;text-align:center;"></div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
       <button class="btn btn-cyan" style="flex:1;padding:12px;" onclick="applyGrid();closeSheet()">Apply</button>
@@ -2378,6 +2396,7 @@ let gridFirstCorner = null;
 let gridCornerMarker = null;
 let gridPrevMode = 'draw';
 let gridStart = 'A1';
+let gridOrientation = 'vertical'; // 'vertical' = letters top→bottom, 'horizontal' = letters left→right
 let gridEnd = 'G23';
 
 // Parse address like "B4" → {col:1, row:3} (0-indexed)
@@ -2413,33 +2432,35 @@ function drawGridFromBounds(b){
   const rows = endRow - startRow + 1;
   const latSpan = ne.lat - sw.lat;
   const lngSpan = ne.lng - sw.lng;
-  const dLat = latSpan / rows;
-  const dLng = lngSpan / cols;
   const op = gridOpacityPct / 100;
   const polylines = [];
-  // Vertical lines
-  for(let c=0; c<=cols; c++){
-    const lng = sw.lng + c*dLng;
-    polylines.push(L.polyline([[sw.lat,lng],[ne.lat,lng]],{color:'#00E5FF',weight:c===0||c===cols?1.5:0.8,opacity:op,interactive:false}));
-  }
-  // Horizontal lines
-  for(let r=0; r<=rows; r++){
-    const lat = sw.lat + r*dLat;
-    polylines.push(L.polyline([[lat,sw.lng],[lat,ne.lng]],{color:'#00E5FF',weight:r===0||r===rows?1.5:0.8,opacity:op,interactive:false}));
+  const vert = gridOrientation !== 'horizontal';
+  // vert: letters top→bottom (dLat per letter band, dLng per number band)
+  // horz: letters left→right (dLng per letter band, dLat per number band)
+  const dLat = vert ? latSpan / cols : latSpan / rows;
+  const dLng = vert ? lngSpan / rows : lngSpan / cols;
+  if(vert){
+    for(let c=0;c<=cols;c++){const lat=sw.lat+c*dLat;polylines.push(L.polyline([[lat,sw.lng],[lat,ne.lng]],{color:'#00E5FF',weight:c===0||c===cols?1.5:0.8,opacity:op,interactive:false}));}
+    for(let r=0;r<=rows;r++){const lng=sw.lng+r*dLng;polylines.push(L.polyline([[sw.lat,lng],[ne.lat,lng]],{color:'#00E5FF',weight:r===0||r===rows?1.5:0.8,opacity:op,interactive:false}));}
+  }else{
+    for(let c=0;c<=cols;c++){const lng=sw.lng+c*dLng;polylines.push(L.polyline([[sw.lat,lng],[ne.lat,lng]],{color:'#00E5FF',weight:c===0||c===cols?1.5:0.8,opacity:op,interactive:false}));}
+    for(let r=0;r<=rows;r++){const lat=sw.lat+r*dLat;polylines.push(L.polyline([[lat,sw.lng],[lat,ne.lng]],{color:'#00E5FF',weight:r===0||r===rows?1.5:0.8,opacity:op,interactive:false}));}
   }
   gridLayer = L.layerGroup(polylines).addTo(map);
   // Zone labels inside each cell
   const markers = [];
   for(let c=0;c<cols;c++){
     for(let r=0;r<rows;r++){
-      const cellLat = sw.lat + (r+0.5)*dLat;
-      const cellLng = sw.lng + (c+0.5)*dLng;
+      const cellLat = vert ? sw.lat+(c+0.5)*dLat : sw.lat+(r+0.5)*dLat;
+      const cellLng = vert ? sw.lng+(r+0.5)*dLng : sw.lng+(c+0.5)*dLng;
       const label = colLabel(startCol+c) + (startRow+r+1);
       const icon = L.divIcon({
-        html:`<div style="color:#00E5FF;font-size:9px;font-family:'IBM Plex Mono',monospace;
-          opacity:${Math.min(op*3,0.7)};white-space:nowrap;text-shadow:0 0 4px #000c;
+        html:`<div style="color:#fff;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;
+          opacity:${Math.min(op*4,1)};white-space:nowrap;
+          text-shadow:0 0 6px #000,0 0 3px #000,0 0 2px #000;
+          background:rgba(0,0,0,${Math.min(op*2,0.55)});border-radius:3px;padding:1px 3px;
           pointer-events:none;">${label}</div>`,
-        className:'', iconSize:[28,12], iconAnchor:[14,6]
+        className:'', iconSize:[36,16], iconAnchor:[18,8]
       });
       markers.push(L.marker([cellLat,cellLng],{icon,interactive:false,zIndexOffset:-100}));
     }
@@ -2519,6 +2540,12 @@ function updateGridPreviewLabel(){
   el.textContent=`${cols} columns × ${rows} rows = ${cols*rows} zones`;
 }
 
+function setGridOrientation(o){
+  gridOrientation=o;
+  document.getElementById('grid-orient-v').classList.toggle('on',o==='vertical');
+  document.getElementById('grid-orient-h').classList.toggle('on',o==='horizontal');
+  if(gridVisible&&gridBounds) applyGrid();
+}
 function applyGrid(){
   const stEl=document.getElementById('grid-start');
   const enEl=document.getElementById('grid-end');
@@ -2537,6 +2564,37 @@ function updateGridLive(){
   if(gridVisible&&gridBounds) applyGrid();
 }
 
+function gotoGridSection(){
+  const el=document.getElementById('grid-goto');
+  const msg=document.getElementById('grid-goto-msg');
+  if(!el||!gridBounds){if(msg)msg.textContent='No grid drawn yet.';return;}
+  const raw=el.value.trim().toUpperCase();
+  // Accept both "A24" and "24A"
+  let parsed=parseGridAddr(raw);
+  if(!parsed){
+    // Try flipping digits/letters: "24A" → "A24"
+    const m=raw.match(/^(\d+)([A-Z]+)$/);
+    if(m) parsed=parseGridAddr(m[2]+m[1]);
+  }
+  if(!parsed){if(msg)msg.textContent='Invalid section.';return;}
+  const start=parseGridAddr(gridStart), end=parseGridAddr(gridEnd);
+  if(!start||!end){if(msg)msg.textContent='No grid active.';return;}
+  const startCol=Math.min(start.col,end.col), endCol=Math.max(start.col,end.col);
+  const startRow=Math.min(start.row,end.row), endRow=Math.max(start.row,end.row);
+  const c=parsed.col-startCol, r=parsed.row-startRow;
+  if(c<0||c>(endCol-startCol)||r<0||r>(endRow-startRow)){if(msg)msg.textContent='Section outside grid.';return;}
+  const cols=endCol-startCol+1, rows=endRow-startRow+1;
+  const sw=L.latLng(gridBounds[0][0],gridBounds[0][1]);
+  const ne=L.latLng(gridBounds[1][0],gridBounds[1][1]);
+  const latSpan=ne.lat-sw.lat, lngSpan=ne.lng-sw.lng;
+  const vert=gridOrientation!=='horizontal';
+  const dLat=vert?latSpan/cols:latSpan/rows;
+  const dLng=vert?lngSpan/rows:lngSpan/cols;
+  const cellLat=vert?sw.lat+(c+0.5)*dLat:sw.lat+(r+0.5)*dLat;
+  const cellLng=vert?sw.lng+(r+0.5)*dLng:sw.lng+(c+0.5)*dLng;
+  map.flyTo([cellLat,cellLng],map.getZoom()<18?18:map.getZoom(),{duration:0.8});
+  if(msg){msg.style.color='var(--cyan)';msg.textContent='→ '+colLabel(parsed.col)+(parsed.row+1);}
+}
 function attachGridRedraw(){}
 
 // ── Checklist ──────────────────────────────────────────────────────────────
@@ -2838,7 +2896,13 @@ async function saveSession(){
   const json=JSON.stringify(payload);
   const fname=lastLoadedFilename||`facilitytag-${new Date().toISOString().slice(0,10)}.json`;
   const flash=()=>{const b=document.getElementById('btn-save');if(b){const icon=b.querySelector('.tool-icon');if(icon)icon.textContent='✓';setTimeout(()=>{if(icon)icon.textContent='💾';},1800);}};
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));
+  const blob=new Blob([json],{type:'application/json'});
+  const file=new File([blob],fname,{type:'application/json'});
+  if(navigator.canShare?.({files:[file]})){
+    try{await navigator.share({files:[file],title:'FacilityTag Session'});flash();}catch(e){if(e.name!=='AbortError'){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);flash();}}
+    return;
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);flash();
 }
 
