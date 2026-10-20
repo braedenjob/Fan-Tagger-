@@ -681,7 +681,7 @@ select.fld option{background:var(--bg3);}
       <div style="font-size:20px;color:var(--text3);margin-top:16px;">→</div>
       <div style="flex:1;">
         <div style="font-size:10px;color:var(--text2);margin-bottom:4px;letter-spacing:0.08em;">END</div>
-        <input type="text" id="grid-end" value="G23" maxlength="6"
+        <input type="text" id="grid-end" value="G56" maxlength="6"
           style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
           color:#e0f0ff;padding:12px;font-size:18px;text-align:center;font-family:'IBM Plex Mono',monospace;box-sizing:border-box;"
           oninput="updateGridLive()" placeholder="G23">
@@ -2397,7 +2397,7 @@ let gridCornerMarker = null;
 let gridPrevMode = 'draw';
 let gridStart = 'A1';
 let gridOrientation = 'vertical'; // 'vertical' = letters top→bottom, 'horizontal' = letters left→right
-let gridEnd = 'G23';
+let gridEnd = 'G56';
 
 // Parse address like "B4" → {col:1, row:3} (0-indexed)
 function parseGridAddr(s){
