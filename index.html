@@ -271,6 +271,12 @@ select.fld option{background:var(--bg3);}
   <div class="tool-row" onclick="openSheet('nudge');closeToolbar()">
     <span class="tool-icon">⊹</span><span>Nudge All Tags</span>
   </div>
+  <div class="tool-row" onclick="openPrefixSheet();closeToolbar()">
+    <span class="tool-icon">🏷</span><span>Label Prefix: <span id="prefix-display">BF</span></span>
+  </div>
+  <div class="tool-row" onclick="openBatchSheet();closeToolbar()">
+    <span class="tool-icon">⊡</span><span>Batch Draw Boxes</span>
+  </div>
 
   <div style="height:1px;background:var(--border);margin:4px 0;"></div>
 
@@ -327,8 +333,7 @@ select.fld option{background:var(--bg3);}
       <span class="panel-title">✅ PM CHECKLIST</span>
       <div style="display:flex;gap:6px;margin-left:auto;">
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:11px;"
-          onclick="document.getElementById('punch-import-input').click()">📥 Import Punch</button>
-        <input type="file" id="punch-import-input" accept=".json" style="display:none" onchange="importFromPunch(this)">
+          onclick="openFanPicker()">＋ ADD FANS</button>
         <button class="btn btn-red" style="padding:6px 10px;font-size:11px;"
           onclick="clearChecklist()">CLEAR</button>
       </div>
@@ -350,6 +355,63 @@ select.fld option{background:var(--bg3);}
     </div>
 
     <div class="panel-body" id="checklist-body" style="padding:14px;"></div>
+  </div>
+
+  <!-- FAN PICKER modal overlay -->
+  <div id="fan-picker-overlay" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.7);display:none;flex-direction:column;">
+    <div style="background:var(--bg1);border-radius:16px 16px 0 0;margin-top:auto;max-height:90vh;display:flex;flex-direction:column;">
+      <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <span style="font-size:15px;font-weight:700;color:#e0f0ff;flex:1;">ADD FANS TO CHECKLIST</span>
+        <button onclick="closeFanPicker()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
+      </div>
+      <!-- Tabs -->
+      <div style="display:flex;border-bottom:1px solid var(--border);">
+        <button id="fp-tab-manual" onclick="fpTab('manual')"
+          style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid var(--cyan);color:#e0f0ff;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.06em;">✏️ TYPE</button>
+        <button id="fp-tab-punch" onclick="fpTab('punch')"
+          style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.06em;">📥 IMPORT PUNCH</button>
+        <button id="fp-tab-tagged" onclick="fpTab('tagged')"
+          style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.06em;">🏷 TAGGED</button>
+      </div>
+
+      <!-- TYPE tab -->
+      <div id="fp-pane-manual" style="padding:14px;flex-shrink:0;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">One fan per line. Include location in parens if untagged: <span style="color:var(--cyan);">BF581 (26D)</span></div>
+        <textarea id="fp-manual-input" rows="6"
+          style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:#e0f0ff;
+          padding:10px;font-size:13px;font-family:'IBM Plex Mono',monospace;box-sizing:border-box;resize:vertical;"
+          placeholder="BF581 (26D)&#10;EF7853 (31E)&#10;Fan 269 (14B)"></textarea>
+        <button class="btn btn-cyan" style="width:100%;margin-top:8px;padding:12px;" onclick="addManualFans()">ADD TO LIST</button>
+      </div>
+
+      <!-- IMPORT PUNCH tab -->
+      <div id="fp-pane-punch" style="display:none;padding:14px;flex-shrink:0;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Import notes from a Punch worklog export. Select which fans to add.</div>
+        <button class="btn btn-ghost" style="width:100%;padding:12px;margin-bottom:12px;"
+          onclick="document.getElementById('punch-import-input').click()">📂 Open Punch Export (.json)</button>
+        <input type="file" id="punch-import-input" accept=".json" style="display:none" onchange="loadPunchFile(this)">
+        <div id="fp-punch-list" style="max-height:40vh;overflow-y:auto;"></div>
+        <div id="fp-punch-actions" style="display:none;padding-top:10px;border-top:1px solid var(--border);margin-top:8px;">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button class="btn btn-ghost" style="flex:1;padding:8px;font-size:11px;" onclick="fpSelectAll(true)">SELECT ALL</button>
+            <button class="btn btn-ghost" style="flex:1;padding:8px;font-size:11px;" onclick="fpSelectAll(false)">NONE</button>
+          </div>
+          <button class="btn btn-cyan" style="width:100%;padding:12px;" onclick="addSelectedPunchFans()">ADD SELECTED TO CHECKLIST</button>
+        </div>
+      </div>
+
+      <!-- TAGGED tab -->
+      <div id="fp-pane-tagged" style="display:none;flex:1;overflow-y:auto;padding:14px;">
+        <div id="fp-tagged-list"></div>
+        <div style="padding-top:10px;border-top:1px solid var(--border);margin-top:8px;">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button class="btn btn-ghost" style="flex:1;padding:8px;font-size:11px;" onclick="fpTaggedSelectAll(true)">SELECT ALL</button>
+            <button class="btn btn-ghost" style="flex:1;padding:8px;font-size:11px;" onclick="fpTaggedSelectAll(false)">NONE</button>
+          </div>
+          <button class="btn btn-cyan" style="width:100%;padding:12px;" onclick="addSelectedTaggedFans()">ADD SELECTED TO CHECKLIST</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- NOTES panel -->
@@ -946,6 +1008,68 @@ select.fld option{background:var(--bg3);}
   </div>
 </div>
 
+<!-- PREFIX sheet -->
+<div class="sheet" id="sheet-prefix">
+  <div class="sh"></div>
+  <div class="sheet-head">
+    <span class="sheet-title">🏷 LABEL PREFIX</span>
+    <button onclick="closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 2px;line-height:1;margin-left:auto;">×</button>
+  </div>
+  <div class="sheet-body" style="padding:16px;">
+    <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">New boxes get this prefix. Just type the number after drawing.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+      <input type="text" id="prefix-input" value="BF" maxlength="8"
+        style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+        color:#e0f0ff;padding:12px;font-size:22px;text-align:center;font-family:'IBM Plex Mono',monospace;box-sizing:border-box;">
+      <button class="btn btn-cyan" style="padding:12px 20px;" onclick="savePrefix()">SET</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="bld-btn" onclick="document.getElementById('prefix-input').value='BF'">BF</button>
+      <button class="bld-btn" onclick="document.getElementById('prefix-input').value='EF'">EF</button>
+      <button class="bld-btn" onclick="document.getElementById('prefix-input').value='RF'">RF</button>
+      <button class="bld-btn" onclick="document.getElementById('prefix-input').value='Fan '">Fan</button>
+      <button class="bld-btn" onclick="document.getElementById('prefix-input').value=''">None</button>
+    </div>
+  </div>
+</div>
+
+<!-- BATCH COUNT sheet -->
+<div class="sheet" id="sheet-batchcount">
+  <div class="sh"></div>
+  <div class="sheet-head">
+    <span class="sheet-title">⊡ BATCH DRAW</span>
+    <button onclick="cancelBatch();closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 2px;line-height:1;margin-left:auto;">×</button>
+  </div>
+  <div class="sheet-body" style="padding:16px;">
+    <div style="font-size:11px;color:var(--text2);margin-bottom:14px;">How many boxes? Draw them all, then name each one.</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="bld-btn" onclick="startBatch(2)">2</button>
+      <button class="bld-btn" onclick="startBatch(3)">3</button>
+      <button class="bld-btn" onclick="startBatch(4)">4</button>
+      <button class="bld-btn" onclick="startBatch(5)">5</button>
+      <button class="bld-btn" onclick="startBatch(6)">6</button>
+      <button class="bld-btn" onclick="startBatch(8)">8</button>
+      <button class="bld-btn" onclick="startBatch(10)">10</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="number" id="batch-custom-count" min="2" max="50" placeholder="Other #"
+        style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+        color:#e0f0ff;padding:12px;font-size:16px;text-align:center;box-sizing:border-box;">
+      <button class="btn btn-cyan" style="padding:12px 16px;" onclick="startBatchCustom()">GO</button>
+    </div>
+  </div>
+</div>
+
+<!-- BATCH RENAME sheet -->
+<div class="sheet" id="sheet-batch">
+  <div class="sh"></div>
+  <div class="sheet-head">
+    <span class="sheet-title">⊡ NAME YOUR BOXES</span>
+    <button onclick="closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 2px;line-height:1;margin-left:auto;">×</button>
+  </div>
+  <div class="sheet-body" style="padding:16px;" id="batch-rename-body"></div>
+</div>
+
 <!-- NEW SITE sheet -->
 <div class="sheet" id="sheet-new-site">
   <div class="sh"></div>
@@ -1025,6 +1149,8 @@ function fmtDate(d){return d?new Date(d).toLocaleDateString('en-US',{month:'shor
 // ── State ──────────────────────────────────────────────────────────────────
 let _lastLayerClick=0;
 let rects=[],selected=null,mode='draw',firstCorner=null,showLabels=true,trashReady=false,lastLoadedFilename=null;
+let defaultPrefix='BF';
+let batchCount=0, batchDrawn=[];
 
 let hist={stack:[[]],idx:0};
 let map,layers={},firstMarker=null,listMode='list';
@@ -1114,14 +1240,28 @@ function handleTap(ll){
     if(Math.abs(fc.lat-ll.lat)<0.000008&&Math.abs(fc.lng-ll.lng)<0.000008)return;
     const bounds=[[Math.min(fc.lat,ll.lat),Math.min(fc.lng,ll.lng)],[Math.max(fc.lat,ll.lat),Math.max(fc.lng,ll.lng)]];
     const id=uid();
-    const nr={id,bounds,label:`Fan ${rects.length+1}`,status:'Unknown',notes:'',building:'',assignedTo:'',
+    const autoLabel=defaultPrefix+(rects.length+1);
+    const nr={id,bounds,label:autoLabel,status:'Unknown',notes:'',building:'',assignedTo:'',
       pm:{schedule:null,history:[],tickets:[]}};
     commitRects([...rects,nr]);
     selectRect(id,false);
     cancelFirstCorner();
+    if(batchCount>0){
+      batchDrawn.push(id);
+      batchCount--;
+      updateHint();
+      if(batchCount===0) openBatchRename();
+      return;
+    }
     openSheet('edit');
-    setTimeout(()=>document.getElementById('edit-label')?.focus(),150);
-    setTimeout(()=>document.getElementById('edit-label')?.focus(),150);
+    setTimeout(()=>{
+      const el=document.getElementById('edit-label');
+      if(!el)return;
+      el.focus();
+      // Select just the number portion so user types right over it
+      const pfxLen=defaultPrefix.length;
+      el.setSelectionRange(pfxLen,el.value.length);
+    },180);
   }
 }
 function cancelFirstCorner(){
@@ -2597,8 +2737,71 @@ function gotoGridSection(){
 }
 function attachGridRedraw(){}
 
+// ── Label Prefix ──────────────────────────────────────────────────────────
+function openPrefixSheet(){
+  const el=document.getElementById('prefix-input');
+  if(el) el.value=defaultPrefix;
+  openSheet('prefix');
+}
+function savePrefix(){
+  const el=document.getElementById('prefix-input');
+  if(el) defaultPrefix=el.value;
+  const disp=document.getElementById('prefix-display');
+  if(disp) disp.textContent=defaultPrefix||'(none)';
+  closeSheet();
+}
+
+// ── Batch Draw ────────────────────────────────────────────────────────────
+function openBatchSheet(){ openSheet('batchcount'); }
+function startBatch(n){
+  batchCount=n; batchDrawn=[];
+  closeSheet();
+  mode='draw'; updateHint();
+}
+function startBatchCustom(){
+  const n=parseInt(document.getElementById('batch-custom-count')?.value||'0');
+  if(!n||n<1){alert('Enter a number.');return;}
+  startBatch(n);
+}
+function cancelBatch(){ batchCount=0; batchDrawn=[]; updateHint(); }
+function openBatchRename(){
+  const body=document.getElementById('batch-rename-body');
+  if(!body)return;
+  const items=batchDrawn.map(id=>rects.find(r=>r.id===id)).filter(Boolean);
+  body.innerHTML=`
+    <div style="font-size:11px;color:var(--text2);margin-bottom:14px;">${items.length} boxes drawn. Name each one:</div>
+    ${items.map((r,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:10px;height:10px;border-radius:2px;background:${COLORS[(rects.indexOf(r))%COLORS.length]};flex-shrink:0;"></div>
+        <input type="text" data-rid="${r.id}" value="${r.label}"
+          style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+          color:#e0f0ff;padding:10px;font-size:14px;font-family:'IBM Plex Mono',monospace;box-sizing:border-box;"
+          placeholder="Fan label">
+      </div>`).join('')}
+    <button class="btn btn-cyan" style="width:100%;margin-top:8px;padding:12px;" onclick="saveBatchNames()">SAVE ALL NAMES</button>
+  `;
+  // Select the number part of each input
+  setTimeout(()=>{
+    body.querySelectorAll('input[data-rid]').forEach(inp=>{
+      const pfxLen=defaultPrefix.length;
+      inp.setSelectionRange(pfxLen,inp.value.length);
+    });
+    body.querySelector('input[data-rid]')?.focus();
+  },180);
+  batchDrawn=[];
+  openSheet('batch');
+}
+function saveBatchNames(){
+  document.querySelectorAll('#batch-rename-body input[data-rid]').forEach(inp=>{
+    const rid=inp.dataset.rid;
+    rects=rects.map(r=>r.id===rid?{...r,label:inp.value.trim()||r.label}:r);
+  });
+  commitRects(rects);
+  closeSheet();
+}
+
 // ── Checklist ──────────────────────────────────────────────────────────────
-let checklist = []; // [{id, tagId, checked}]
+let checklist = []; // [{id, tagId?, label, location?, checked, routeOrder?}]
 let routeLayers = []; // Leaflet layers for the drawn route
 
 function loadChecklist(){
@@ -2619,24 +2822,41 @@ function renderChecklist(){
   if(summary)summary.textContent=`${checklist.length} fan${checklist.length!==1?'s':''} · ${checked} checked`;
   updateChecklistBadge();
   if(!checklist.length){
-    body.innerHTML='<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">No fans yet.<br>Import from Punch or tap a fan → add to checklist.</div></div>';
+    body.innerHTML='<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">No fans yet.<br>Tap ＋ ADD FANS to get started.</div></div>';
     return;
   }
   body.innerHTML=checklist.map((c,idx)=>{
     const r=rects.find(r=>r.id===c.tagId);
-    if(!r)return'';
-    const color=COLORS[rects.indexOf(r)%COLORS.length];
     const routeNum=c.routeOrder!=null?`<span style="background:var(--cyan);color:#000;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${c.routeOrder+1}</span>`:'';
-    return`<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);">
-      ${routeNum}
-      <input type="checkbox" ${c.checked?'checked':''} onchange="toggleCheckItem('${c.id}',this.checked)"
-        style="width:22px;height:22px;cursor:pointer;accent-color:var(--cyan);flex-shrink:0;">
-      <div style="width:10px;height:10px;border-radius:2px;background:${color};flex-shrink:0;"></div>
-      <div style="flex:1;min-width:0;${c.checked?'opacity:0.4;':''}" onclick="goToTag(r.id)">
-        <div style="font-size:13px;font-weight:600;color:#e0f0ff;cursor:pointer;">${r.label}${r.building?` <span class="chip chip-cyan">${r.building}</span>`:''}</div>
-        <div style="font-size:11px;color:${STATUS_COLORS[r.status]||'var(--text2)'};">${r.status}</div>
-      </div>
-    </div>`;
+    const locChip=c.location?`<span class="chip chip-cyan">${c.location}</span>`:'';
+    if(r){
+      const color=COLORS[rects.indexOf(r)%COLORS.length];
+      return`<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);">
+        ${routeNum}
+        <input type="checkbox" ${c.checked?'checked':''} onchange="toggleCheckItem('${c.id}',this.checked)"
+          style="width:22px;height:22px;cursor:pointer;accent-color:var(--cyan);flex-shrink:0;">
+        <div style="width:10px;height:10px;border-radius:2px;background:${color};flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;${c.checked?'opacity:0.4;':''}" onclick="goToTag(r.id)">
+          <div style="font-size:13px;font-weight:600;color:#e0f0ff;cursor:pointer;">${r.label}${r.building?` <span class="chip chip-cyan">${r.building}</span>`:''}</div>
+          <div style="font-size:11px;color:${STATUS_COLORS[r.status]||'var(--text2)'};">${r.status}</div>
+        </div>
+        <button onclick="removeCheckItem('${c.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px;">×</button>
+      </div>`;
+    } else {
+      // Untagged — navigate to grid location
+      const hasLoc=c.location&&gridBounds;
+      return`<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);">
+        ${routeNum}
+        <input type="checkbox" ${c.checked?'checked':''} onchange="toggleCheckItem('${c.id}',this.checked)"
+          style="width:22px;height:22px;cursor:pointer;accent-color:var(--cyan);flex-shrink:0;">
+        <div style="width:10px;height:10px;border-radius:2px;background:#555;flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;${c.checked?'opacity:0.4;':''}" onclick="${hasLoc?`gotoLocation('${c.location}')`:''}" ${hasLoc?'style="cursor:pointer;"':''}>
+          <div style="font-size:13px;font-weight:600;color:#e0f0ff;">${c.label||'Unknown'} ${locChip}</div>
+          <div style="font-size:11px;color:var(--text3);">Not tagged${hasLoc?' · tap to navigate':''}</div>
+        </div>
+        <button onclick="removeCheckItem('${c.id}')" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 2px;">×</button>
+      </div>`;
+    }
   }).join('');
 }
 function toggleCheckItem(id,checked){
@@ -2664,40 +2884,168 @@ function completeCheckedItems(){
   alert(`✅ ${done.length} PM${done.length!==1?'s':''} logged`);
 }
 
-// ── Punch Import ────────────────────────────────────────────────────────────
-function importFromPunch(input){
+// ── Fan Picker ──────────────────────────────────────────────────────────────
+let fpPunchCandidates = []; // [{label, location, tagId?}]
+
+function openFanPicker(){
+  document.getElementById('fan-picker-overlay').style.display='flex';
+  fpTab('manual');
+}
+function closeFanPicker(){
+  document.getElementById('fan-picker-overlay').style.display='none';
+}
+function fpTab(name){
+  ['manual','punch','tagged'].forEach(t=>{
+    document.getElementById('fp-pane-'+t).style.display=t===name?(t==='manual'||t==='punch'?'block':'block'):'none';
+    const btn=document.getElementById('fp-tab-'+t);
+    if(btn){btn.style.borderBottomColor=t===name?'var(--cyan)':'transparent';btn.style.color=t===name?'#e0f0ff':'var(--text2)';}
+  });
+  if(name==='tagged') renderFpTagged();
+}
+function parseFanLine(line){
+  // "BF581 (26D)" or "EF7853" or "Fan 269 (14B)"
+  const locM=line.match(/\(([^)]+)\)/);
+  const location=locM?locM[1].trim().toUpperCase():null;
+  const clean=line.replace(/\([^)]*\)/g,'').trim();
+  const fanM=clean.match(/([A-Z]{1,3}\s*\d{3,6}|Fan\s*\d+)/i);
+  if(!fanM)return null;
+  const label=fanM[0].replace(/\s+/g,'').toUpperCase();
+  return{label,location};
+}
+function addManualFans(){
+  const raw=document.getElementById('fp-manual-input').value;
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  let added=0;
+  lines.forEach(line=>{
+    const p=parseFanLine(line);
+    if(!p)return;
+    const rect=rects.find(r=>r.label.replace(/\s+/g,'').toUpperCase()===p.label||r.label.toUpperCase().includes(p.label));
+    if(checklist.find(c=>c.label===p.label))return;
+    checklist.push({id:uid(),tagId:rect?.id||null,label:p.label,location:p.location,checked:false,routeOrder:null});
+    added++;
+  });
+  saveChecklist();renderChecklist();updateChecklistBadge();
+  if(added) closeFanPicker();
+  document.getElementById('fp-manual-input').value='';
+}
+function loadPunchFile(input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
     try{
       const data=JSON.parse(e.target.result);
-      // Punch entries are in data.entries or data itself is an array
-      const entries=Array.isArray(data)?data:(data.entries||data.days?.flatMap(d=>d.entries)||[]);
-      let matched=0,skipped=0;
-      entries.forEach(entry=>{
-        if(entry.skip)return;
-        const note=entry.note||'';
-        // Extract fan ID from note — match patterns like BF1658, EF7853, Fan 269 etc.
-        const fanMatch=note.match(/\b([A-Z]{1,3}\d{3,6}|Fan\s*\d+)\b/i);
-        if(!fanMatch)return;
-        const fanId=fanMatch[0].replace(/\s+/g,'').toUpperCase();
-        // Find matching rect by label (case-insensitive, strip spaces)
-        const rect=rects.find(r=>r.label.replace(/\s+/g,'').toUpperCase()===fanId||
-          r.label.toUpperCase().includes(fanId));
-        if(!rect){skipped++;return;}
-        // Add to checklist if not already there
-        if(!checklist.find(c=>c.tagId===rect.id)){
-          checklist.push({id:uid(),tagId:rect.id,checked:false,routeOrder:null});
-          matched++;
-        }
-      });
-      saveChecklist();renderChecklist();updateChecklistBadge();
-      navTo('checklist');
-      alert(`✅ Imported ${matched} fan${matched!==1?'s':''} from Punch${skipped?`\n${skipped} entries had no matching tag`:''}`)
-    }catch(err){alert('Could not read Punch file: '+err.message);}
+      // Use state.notes if present (named fan list with locations)
+      const notes=data.state?.notes;
+      if(notes&&notes.length){
+        fpPunchCandidates=notes.map(n=>({
+          label:(n.name||'').replace(/\s+/g,'').toUpperCase(),
+          location:(n.location||'').toUpperCase()||null,
+          selected:true
+        }));
+      } else {
+        // Fall back to rows
+        const rows=(data.state?.rows||[]).filter(r=>!r.skip);
+        fpPunchCandidates=rows.map(r=>{
+          const p=parseFanLine(r.note||'');
+          return p?{label:p.label,location:p.location,selected:true}:null;
+        }).filter(Boolean);
+      }
+      renderFpPunchList();
+    }catch(err){alert('Could not read file: '+err.message);}
   };
   reader.readAsText(file);
   input.value='';
+}
+function renderFpPunchList(){
+  const el=document.getElementById('fp-punch-list');
+  const act=document.getElementById('fp-punch-actions');
+  if(!fpPunchCandidates.length){el.innerHTML='<div style="color:var(--text2);font-size:12px;">No fans found in file.</div>';act.style.display='none';return;}
+  act.style.display='block';
+  el.innerHTML=fpPunchCandidates.map((c,i)=>{
+    const rect=rects.find(r=>r.label.replace(/\s+/g,'').toUpperCase()===c.label||r.label.toUpperCase().includes(c.label));
+    const tagBadge=rect?`<span style="font-size:10px;color:var(--cyan);">🏷 tagged</span>`:`<span style="font-size:10px;color:var(--text3);">not tagged</span>`;
+    const locBadge=c.location?`<span class="chip chip-cyan">${c.location}</span>`:'';
+    return`<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+      <input type="checkbox" ${c.selected?'checked':''} onchange="fpPunchCandidates[${i}].selected=this.checked"
+        style="width:20px;height:20px;accent-color:var(--cyan);flex-shrink:0;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:#e0f0ff;">${c.label} ${locBadge}</div>
+        <div>${tagBadge}</div>
+      </div>
+    </label>`;
+  }).join('');
+}
+function fpSelectAll(v){
+  fpPunchCandidates.forEach(c=>c.selected=v);
+  renderFpPunchList();
+}
+function addSelectedPunchFans(){
+  let added=0;
+  fpPunchCandidates.filter(c=>c.selected).forEach(c=>{
+    if(checklist.find(x=>x.label===c.label))return;
+    const rect=rects.find(r=>r.label.replace(/\s+/g,'').toUpperCase()===c.label||r.label.toUpperCase().includes(c.label));
+    checklist.push({id:uid(),tagId:rect?.id||null,label:c.label,location:c.location,checked:false,routeOrder:null});
+    added++;
+  });
+  saveChecklist();renderChecklist();updateChecklistBadge();
+  if(added) closeFanPicker();
+}
+function renderFpTagged(){
+  const el=document.getElementById('fp-tagged-list');
+  if(!rects.length){el.innerHTML='<div style="color:var(--text2);font-size:12px;">No tagged fans on this site.</div>';return;}
+  el.innerHTML=rects.map((r,i)=>{
+    const alreadyIn=checklist.find(c=>c.tagId===r.id);
+    const color=COLORS[i%COLORS.length];
+    return`<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;${alreadyIn?'opacity:0.4;':''}">
+      <input type="checkbox" class="fp-tagged-cb" data-id="${r.id}" ${alreadyIn?'disabled checked':''} style="width:20px;height:20px;accent-color:var(--cyan);flex-shrink:0;">
+      <div style="width:10px;height:10px;border-radius:2px;background:${color};flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:#e0f0ff;">${r.label}${r.building?` <span class="chip chip-cyan">${r.building}</span>`:''}</div>
+        <div style="font-size:11px;color:${STATUS_COLORS[r.status]||'var(--text2)'};">${r.status}</div>
+      </div>
+    </label>`;
+  }).join('');
+}
+function fpTaggedSelectAll(v){
+  document.querySelectorAll('.fp-tagged-cb:not(:disabled)').forEach(cb=>cb.checked=v);
+}
+function addSelectedTaggedFans(){
+  let added=0;
+  document.querySelectorAll('.fp-tagged-cb:not(:disabled):checked').forEach(cb=>{
+    const rid=cb.dataset.id;
+    if(checklist.find(c=>c.tagId===rid))return;
+    const r=rects.find(r=>r.id===rid);if(!r)return;
+    checklist.push({id:uid(),tagId:rid,label:r.label,location:null,checked:false,routeOrder:null});
+    added++;
+  });
+  saveChecklist();renderChecklist();updateChecklistBadge();
+  if(added) closeFanPicker();
+}
+function removeCheckItem(id){
+  checklist=checklist.filter(c=>c.id!==id);
+  saveChecklist();renderChecklist();updateChecklistBadge();
+}
+function gotoLocation(loc){
+  // loc like "26D" → try both as-is and flipped
+  let raw=loc.trim().toUpperCase();
+  let parsed=parseGridAddr(raw);
+  if(!parsed){const m=raw.match(/^(\d+)([A-Z]+)$/);if(m)parsed=parseGridAddr(m[2]+m[1]);}
+  if(!parsed||!gridBounds){alert('Draw a grid first, then tap to navigate.');return;}
+  const start=parseGridAddr(gridStart),end=parseGridAddr(gridEnd);
+  if(!start||!end)return;
+  const startCol=Math.min(start.col,end.col),endCol=Math.max(start.col,end.col);
+  const startRow=Math.min(start.row,end.row),endRow=Math.max(start.row,end.row);
+  const c=parsed.col-startCol,r=parsed.row-startRow;
+  if(c<0||c>(endCol-startCol)||r<0||r>(endRow-startRow)){alert(`Location ${loc} is outside the current grid.`);return;}
+  const sw=L.latLng(gridBounds[0][0],gridBounds[0][1]),ne=L.latLng(gridBounds[1][0],gridBounds[1][1]);
+  const latSpan=ne.lat-sw.lat,lngSpan=ne.lng-sw.lng;
+  const vert=gridOrientation!=='horizontal';
+  const dLat=vert?latSpan/(endCol-startCol+1):latSpan/(endRow-startRow+1);
+  const dLng=vert?lngSpan/(endRow-startRow+1):lngSpan/(endCol-startCol+1);
+  const cellLat=vert?sw.lat+(c+0.5)*dLat:sw.lat+(r+0.5)*dLat;
+  const cellLng=vert?sw.lng+(r+0.5)*dLng:sw.lng+(c+0.5)*dLng;
+  map.flyTo([cellLat,cellLng],map.getZoom()<18?18:map.getZoom(),{duration:0.8});
+  navTo('map');
 }
 
 // ── Route Optimization (nearest-neighbor) ──────────────────────────────────
@@ -2803,7 +3151,7 @@ function closeMenu(){
 }
 
 // ── Sheets ─────────────────────────────────────────────────────────────────
-const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','assign','grid','new-site','schedule-new','add-employee','add-shift','new-topic'];
+const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','assign','grid','new-site','schedule-new','add-employee','add-shift','new-topic','prefix','batchcount','batch'];
 function openSheet(name){
   SHEETS.forEach(s=>document.getElementById(`sheet-${s}`)?.classList.remove('open'));
   document.getElementById('dimmer').classList.add('open');
@@ -2827,7 +3175,9 @@ function updateHint(){
   if(mode==='pan'){el.className='';el.innerHTML='DRAG TO PAN  ·  PINCH TO ZOOM';}
   else if(mode==='grid'&&gridFirstCorner){el.className='first';el.innerHTML='TAP OPPOSITE CORNER'+cancelBtn("cancelGridCorner();mode=gridPrevMode;updateStatusBar()");}
   else if(mode==='grid'){el.className='first';el.innerHTML='TAP FIRST CORNER OF GRID'+cancelBtn("mode=gridPrevMode;updateStatusBar()");}
+  else if(firstCorner&&batchCount>0){el.className='first';el.innerHTML=`BATCH ${batchDrawn.length+1}/${batchDrawn.length+batchCount+1} — TAP BOTTOM-RIGHT`+cancelBtn("cancelFirstCorner()");}
   else if(firstCorner){el.className='first';el.innerHTML='TAP BOTTOM-RIGHT CORNER'+cancelBtn("cancelFirstCorner()");}
+  else if(batchCount>0){el.className='first';el.innerHTML=`BATCH — TAP TOP-LEFT OF BOX ${batchDrawn.length+1} (${batchCount} left)`+cancelBtn("cancelBatch();updateHint()");}
   else{el.className='';el.innerHTML='TAP TOP-LEFT · TAP BOTTOM-RIGHT · PINCH TO ZOOM';}
 }
 function updateTagCount(){
