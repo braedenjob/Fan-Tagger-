@@ -1237,27 +1237,50 @@ function handleTap(ll){
   }else{
     const fc=firstCorner;
     if(Math.abs(fc.lat-ll.lat)<0.000008&&Math.abs(fc.lng-ll.lng)<0.000008)return;
-    const bounds=[[Math.min(fc.lat,ll.lat),Math.min(fc.lng,ll.lng)],[Math.max(fc.lat,ll.lat),Math.max(fc.lng,ll.lng)]];
+    const sw=[Math.min(fc.lat,ll.lat),Math.min(fc.lng,ll.lng)];
+    const ne=[Math.max(fc.lat,ll.lat),Math.max(fc.lng,ll.lng)];
+    cancelFirstCorner();
+
+    if(batchCount>0){
+      // Split the drawn box into batchCount equal pieces along the longer axis
+      const n=batchCount;
+      const latSpan=ne[0]-sw[0];
+      const lngSpan=ne[1]-sw[1];
+      const splitLat=latSpan>=lngSpan; // true = slice horizontally (stacked rows), false = slice vertically (side by side columns)
+      const newRects=[];
+      for(let i=0;i<n;i++){
+        const id=uid();
+        let b;
+        if(splitLat){
+          const rowH=latSpan/n;
+          b=[[sw[0]+i*rowH,sw[1]],[sw[0]+(i+1)*rowH,ne[1]]];
+        }else{
+          const colW=lngSpan/n;
+          b=[[sw[0],sw[1]+i*colW],[ne[0],sw[1]+(i+1)*colW]];
+        }
+        newRects.push({id,bounds:b,label:defaultPrefix+(rects.length+newRects.length+1),
+          status:'Unknown',notes:'',building:'',assignedTo:'',pm:{schedule:null,history:[],tickets:[]}});
+      }
+      batchDrawn=newRects.map(r=>r.id);
+      batchCount=0;
+      commitRects([...rects,...newRects]);
+      selectRect(null,false);
+      openBatchRename();
+      return;
+    }
+
+    const bounds=[sw,ne];
     const id=uid();
     const autoLabel=defaultPrefix+(rects.length+1);
     const nr={id,bounds,label:autoLabel,status:'Unknown',notes:'',building:'',assignedTo:'',
       pm:{schedule:null,history:[],tickets:[]}};
     commitRects([...rects,nr]);
     selectRect(id,false);
-    cancelFirstCorner();
-    if(batchCount>0){
-      batchDrawn.push(id);
-      batchCount--;
-      updateHint();
-      if(batchCount===0) openBatchRename();
-      return;
-    }
     openSheet('edit');
     setTimeout(()=>{
       const el=document.getElementById('edit-label');
       if(!el)return;
       el.focus();
-      // Select just the number portion so user types right over it
       const pfxLen=defaultPrefix.length;
       el.setSelectionRange(pfxLen,el.value.length);
     },180);
@@ -3181,9 +3204,9 @@ function updateHint(){
   if(mode==='pan'){el.className='';el.innerHTML='DRAG TO PAN  ·  PINCH TO ZOOM';}
   else if(mode==='grid'&&gridFirstCorner){el.className='first';el.innerHTML='TAP OPPOSITE CORNER'+cancelBtn("cancelGridCorner();mode=gridPrevMode;updateStatusBar()");}
   else if(mode==='grid'){el.className='first';el.innerHTML='TAP FIRST CORNER OF GRID'+cancelBtn("mode=gridPrevMode;updateStatusBar()");}
-  else if(firstCorner&&batchCount>0){el.className='first';el.innerHTML=`BATCH ${batchDrawn.length+1}/${batchDrawn.length+batchCount+1} — TAP BOTTOM-RIGHT`+cancelBtn("cancelFirstCorner()");}
+  else if(firstCorner&&batchCount>0){el.className='first';el.innerHTML=`BATCH ×${batchCount} — TAP OPPOSITE CORNER`+cancelBtn("cancelFirstCorner();cancelBatch()");}
   else if(firstCorner){el.className='first';el.innerHTML='TAP BOTTOM-RIGHT CORNER'+cancelBtn("cancelFirstCorner()");}
-  else if(batchCount>0){el.className='first';el.innerHTML=`BATCH — TAP TOP-LEFT OF BOX ${batchDrawn.length+1} (${batchCount} left)`+cancelBtn("cancelBatch();updateHint()");}
+  else if(batchCount>0){el.className='first';el.innerHTML=`BATCH ×${batchCount} — DRAW ONE BOX AROUND ALL UNITS`+cancelBtn("cancelBatch();updateHint()");}
   else{el.className='';el.innerHTML='TAP TOP-LEFT · TAP BOTTOM-RIGHT · PINCH TO ZOOM';}
 }
 function updateTagCount(){
