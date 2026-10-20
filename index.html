@@ -1034,29 +1034,28 @@ select.fld option{background:var(--bg3);}
 </div>
 
 <!-- BATCH COUNT sheet -->
-<div class="sheet" id="sheet-batchcount">
-  <div class="sh"></div>
-  <div class="sheet-head">
-    <span class="sheet-title">⊡ BATCH DRAW</span>
-    <button onclick="cancelBatch();closeSheet()" style="background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:0 2px;line-height:1;margin-left:auto;">×</button>
+<!-- BATCH COUNT popup (non-blocking, no dimmer) -->
+<div id="batch-popup" style="display:none;position:fixed;left:50%;transform:translateX(-50%);
+  bottom:100px;z-index:4000;background:var(--bg1);border:1px solid var(--border);
+  border-radius:16px;padding:14px 16px;width:min(340px,90vw);box-shadow:0 8px 32px #0009;">
+  <div style="display:flex;align-items:center;margin-bottom:10px;">
+    <span style="font-size:13px;font-weight:700;color:#e0f0ff;flex:1;">⊡ HOW MANY BOXES?</span>
+    <button onclick="hideBatchPopup()" style="background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
   </div>
-  <div class="sheet-body" style="padding:16px;">
-    <div style="font-size:11px;color:var(--text2);margin-bottom:14px;">How many boxes? Draw them all, then name each one.</div>
-    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;">
-      <button class="bld-btn" onclick="startBatch(2)">2</button>
-      <button class="bld-btn" onclick="startBatch(3)">3</button>
-      <button class="bld-btn" onclick="startBatch(4)">4</button>
-      <button class="bld-btn" onclick="startBatch(5)">5</button>
-      <button class="bld-btn" onclick="startBatch(6)">6</button>
-      <button class="bld-btn" onclick="startBatch(8)">8</button>
-      <button class="bld-btn" onclick="startBatch(10)">10</button>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input type="number" id="batch-custom-count" min="2" max="50" placeholder="Other #"
-        style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
-        color:#e0f0ff;padding:12px;font-size:16px;text-align:center;box-sizing:border-box;">
-      <button class="btn btn-cyan" style="padding:12px 16px;" onclick="startBatchCustom()">GO</button>
-    </div>
+  <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+    <button class="bld-btn" onclick="startBatch(2)">2</button>
+    <button class="bld-btn" onclick="startBatch(3)">3</button>
+    <button class="bld-btn" onclick="startBatch(4)">4</button>
+    <button class="bld-btn" onclick="startBatch(5)">5</button>
+    <button class="bld-btn" onclick="startBatch(6)">6</button>
+    <button class="bld-btn" onclick="startBatch(8)">8</button>
+    <button class="bld-btn" onclick="startBatch(10)">10</button>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <input type="number" id="batch-custom-count" min="2" max="50" placeholder="Other #"
+      style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+      color:#e0f0ff;padding:10px;font-size:16px;text-align:center;box-sizing:border-box;">
+    <button class="btn btn-cyan" style="padding:10px 16px;" onclick="startBatchCustom()">GO</button>
   </div>
 </div>
 
@@ -2752,10 +2751,17 @@ function savePrefix(){
 }
 
 // ── Batch Draw ────────────────────────────────────────────────────────────
-function openBatchSheet(){ openSheet('batchcount'); }
+function openBatchSheet(){
+  const p=document.getElementById('batch-popup');
+  if(p){ p.style.display='block'; }
+}
+function hideBatchPopup(){
+  const p=document.getElementById('batch-popup');
+  if(p){ p.style.display='none'; }
+}
 function startBatch(n){
   batchCount=n; batchDrawn=[];
-  closeSheet();
+  hideBatchPopup();
   mode='draw'; updateHint();
 }
 function startBatchCustom(){
@@ -3151,7 +3157,7 @@ function closeMenu(){
 }
 
 // ── Sheets ─────────────────────────────────────────────────────────────────
-const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','assign','grid','new-site','schedule-new','add-employee','add-shift','new-topic','prefix','batchcount','batch'];
+const SHEETS=['edit','pm','ticket','ticket-detail','history','changelog','nudge','assign','grid','new-site','schedule-new','add-employee','add-shift','new-topic','prefix','batch'];
 function openSheet(name){
   SHEETS.forEach(s=>document.getElementById(`sheet-${s}`)?.classList.remove('open'));
   document.getElementById('dimmer').classList.add('open');
